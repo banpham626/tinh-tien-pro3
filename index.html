@@ -3,94 +3,92 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Hệ Thống Tính Tiền MMO</title>
+    <title>Hệ Thống Tính Tiền MMO - Đa Nền Tảng</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        :root { --primary: #2563eb; --secondary: #f43f5e; --bg: #f1f5f9; --text: #1e293b; }
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); margin: 0; padding: 12px; color: var(--text); line-height: 1.5; }
+        :root { --primary: #2563eb; --secondary: #f43f5e; --bg: #f8fafc; --text: #1e293b; }
+        * { box-sizing: border-box; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); margin: 0; padding: 20px; color: var(--text); }
         
-        .app-container { max-width: 500px; margin: 0 auto; }
-        header { text-align: center; margin-bottom: 20px; padding: 10px 0; }
-        h2 { font-size: 20px; margin: 0; color: #0f172a; letter-spacing: 0.5px; }
+        .app-container { width: 100%; max-width: 1000px; margin: 0 auto; background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+        h2 { text-align: center; text-transform: uppercase; margin-bottom: 25px; color: #0f172a; }
+        
+        textarea { width: 100%; height: 160px; border: 2px solid #e2e8f0; border-radius: 12px; padding: 15px; font-size: 16px; font-family: monospace; outline: none; transition: 0.3s; }
+        textarea:focus { border-color: var(--primary); }
 
-        /* Card Style */
-        .card { background: white; border-radius: 16px; padding: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 16px; }
-        
-        textarea { width: 100%; height: 140px; border: 2px solid #e2e8f0; border-radius: 12px; padding: 12px; font-size: 15px; resize: none; outline: none; transition: 0.2s; font-family: 'Courier New', Courier, monospace; }
-        textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
-
-        /* Button Grid */
-        .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
-        button { border: none; border-radius: 12px; padding: 14px; font-weight: 600; font-size: 14px; color: white; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
-        button:active { transform: scale(0.96); opacity: 0.9; }
-        
-        .btn-calc { background: var(--primary); grid-column: span 2; font-size: 16px; padding: 16px; }
+        /* Nhóm nút bấm */
+        .controls { display: flex; gap: 10px; margin: 20px 0; }
+        button { flex: 1; padding: 15px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; color: white; transition: 0.2s; }
+        .btn-calc { background: var(--primary); }
         .btn-copy { background: #8b5cf6; }
         .btn-print { background: #10b981; }
-        .btn-clear { background: #64748b; grid-column: span 2; padding: 10px; font-size: 13px; }
+        .btn-clear { background: #ef4444; }
 
-        /* Result Area */
-        .money-display { background: #fff1f2; border: 1.5px solid #fecdd3; border-radius: 16px; text-align: center; padding: 20px; }
-        .money-label { font-size: 13px; font-weight: bold; color: var(--secondary); text-transform: uppercase; }
-        .money-val { font-size: 36px; font-weight: 800; color: var(--secondary); margin: 8px 0; display: block; }
-        .money-sub { font-size: 12px; color: #94a3b8; }
-
-        .detail-box { font-size: 14px; border-left: 4px solid var(--primary); background: #f8fafc; padding: 12px; border-radius: 0 12px 12px 0; margin-top: 12px; overflow-x: auto; }
+        /* Bố cục chính cho PC */
+        .result-grid { display: grid; grid-template-columns: 1fr 320px; gap: 25px; }
+        .detail-box { border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; min-height: 300px; background: #f8fafc; }
         
-        /* QR Code Footer */
-        .qr-section { text-align: center; padding: 10px; }
-        .qr-label { font-size: 11px; color: #64748b; margin-bottom: 10px; display: block; }
-        #qrcode-screen { display: flex; justify-content: center; background: white; padding: 10px; border-radius: 12px; }
-        #sec-code-display { font-family: monospace; font-size: 13px; margin-top: 8px; color: #1e293b; font-weight: bold; }
+        .money-box { background: #fff1f2; border: 2px solid var(--secondary); border-radius: 15px; text-align: center; padding: 25px; margin-bottom: 20px; }
+        .money-box b { font-size: 42px; color: var(--secondary); display: block; margin: 10px 0; }
+        
+        .qr-box { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; text-align: center; }
+        #qrcode-screen { display: flex; justify-content: center; margin: 10px 0; }
 
-        /* Formatting */
-        .num-blue { color: var(--primary); font-weight: 700; }
-        .cash-red { color: var(--secondary); font-weight: 700; }
-        .label-type { background: #e2e8f0; padding: 1px 5px; border-radius: 4px; font-size: 12px; margin: 0 2px; }
-        .valid-row { margin-bottom: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; }
-        .valid-row strong { color: #0f172a; font-size: 15px; }
+        /* --- PHẦN QUAN TRỌNG: TỰ ĐỘNG CHỈNH CHO MOBILE --- */
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            .app-container { padding: 15px; border-radius: 0; box-shadow: none; }
+            .controls { flex-wrap: wrap; }
+            .controls button { flex: 1 1 45%; } /* Chia nút thành 2 hàng */
+            .btn-calc { flex: 1 1 100%; font-size: 18px; } /* Nút xác nhận to nhất */
+            
+            /* Chuyển 2 cột PC thành 1 cột dọc trên Mobile */
+            .result-grid { grid-template-columns: 1fr; }
+            .money-box b { font-size: 36px; }
+            .detail-box { min-height: auto; order: 2; } /* Cho chi tiết xuống dưới cùng */
+            .right-panel { order: 1; } /* Cho tiền và QR lên trên */
+        }
 
-        /* Toast */
-        #toast { visibility: hidden; position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #334155; color: white; padding: 12px 24px; border-radius: 50px; font-size: 14px; z-index: 9999; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
-        #toast.show { visibility: visible; animation: fadeInOut 2.8s; }
-        @keyframes fadeInOut { 0%, 100% { opacity: 0; bottom: 20px; } 15%, 85% { opacity: 1; bottom: 30px; } }
+        /* Định dạng nội dung kết quả */
+        .num-blue { color: var(--primary); font-weight: bold; }
+        .cash-red { color: var(--secondary); font-weight: bold; }
+        .label-type { background: #e2e8f0; padding: 2px 5px; border-radius: 4px; font-size: 12px; margin: 0 2px; }
+        .valid-row { border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 10px; }
 
-        @media print { .no-print { display: none !important; } .app-container { width: 80mm; } }
+        #toast { visibility: hidden; position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #333; color: #fff; padding: 12px 25px; border-radius: 50px; z-index: 1000; }
+        #toast.show { visibility: visible; animation: fade 0.5s; }
+        @keyframes fade { from {opacity: 0;} to {opacity: 1;} }
+        .print-only { display: none; }
     </style>
 </head>
 <body>
 
 <div class="app-container">
-    <header class="no-print">
-        <h2>HỆ THỐNG TÍNH TIỀN</h2>
-    </header>
-
-    <div class="card no-print">
-        <textarea id="raw_input" placeholder="Nhập dữ liệu: đài: số kiểu tiền..."></textarea>
-    </div>
-
-    <div class="btn-grid no-print">
+    <h2>Hệ Thống Tính Tiền</h2>
+    <textarea id="raw_input" placeholder="Nhập dữ liệu vào đây..."></textarea>
+    
+    <div class="controls no-print">
         <button class="btn-calc" onclick="thucThi()">🚀 XÁC NHẬN</button>
-        <button class="btn-copy" onclick="copyZalo()">📄 COPY</button>
-        <button class="btn-print" onclick="window.print()">🖨️ IN KQ</button>
-        <button class="btn-clear" onclick="xoaHet()">LÀM LẠI</button>
+        <button class="btn-copy" onclick="copyZalo()">📋 COPY ZALO</button>
+        <button class="btn-print" onclick="window.print()">🖨️ IN KẾT QUẢ</button>
+        <button class="btn-clear" onclick="xoaHet()">XÓA HẾT</button>
     </div>
 
-    <div id="result_area" class="card" style="display:none;">
-        <div class="money-display">
-            <span class="money-label">TỔNG THANH TOÁN</span>
-            <span id="result_total" class="money-val">0</span>
-            <div class="money-sub">Đã trừ cò 20% (x 0.8)</div>
+    <div class="result-grid">
+        <div id="result_detail" class="detail-box">Chưa có dữ liệu...</div>
+        
+        <div class="right-panel">
+            <div class="money-box">
+                <span style="font-weight:bold; color:var(--secondary)">TỔNG TIỀN (X 0.8)</span>
+                <b><span id="result_total">0</span></b>
+            </div>
+            <div id="qr_container" class="qr-box" style="display:none;">
+                <span style="font-size: 12px; color: #64748b;">MÃ QR ĐỐI SOÁT</span>
+                <div id="qrcode-screen"></div>
+                <div id="sec-code-display" style="font-weight:bold; font-size:14px;"></div>
+            </div>
         </div>
-        <div id="result_detail" class="detail-box"></div>
-    </div>
-
-    <div id="qr_area" class="card qr-section" style="display:none;">
-        <span class="qr-label">MÃ QR ĐỐI SOÁT HÓA ĐƠN</span>
-        <div id="qrcode-screen"></div>
-        <div id="sec-code-display"></div>
     </div>
 </div>
 
@@ -101,16 +99,16 @@ const tg = window.Telegram.WebApp;
 tg.expand();
 let userId = tg.initDataUnsafe?.user?.id || "";
 
-// 🔴 THAY LINK GOOGLE CỦA BẠN VÀO ĐÂY
+// 🔴 DÁN LINK GOOGLE CỦA BẠN VÀO ĐÂY
 const GAS_URL = "https://script.google.com/macros/s/AKfycbzwdvEagOorImdtMLu5bky9BlhBDOlBLBeXCneb8h37I_yEG_p5Zbc7xbvPrAXbCxUt/exec"; 
 
 window.billText = "";
 
-function showToast(m) { let t=document.getElementById("toast"); t.innerText=m; t.className="show"; setTimeout(()=>{t.className=""},2800); }
+function showToast(m) { let t=document.getElementById("toast"); t.innerText=m; t.className="show"; setTimeout(()=>{t.className=""},2500); }
 
 function copyZalo() {
     if (!window.billText) { showToast("⚠️ Chưa có dữ liệu!"); return; }
-    navigator.clipboard.writeText(window.billText).then(()=>showToast("✅ Đã copy vào bộ nhớ!"));
+    navigator.clipboard.writeText(window.billText).then(()=>showToast("✅ Đã copy!"));
 }
 
 function convertDai(d) {
@@ -144,10 +142,7 @@ function layHeSo(dai, loai, len) {
 
 function thucThi() {
     let raw = document.getElementById('raw_input').value;
-    if (!raw) { showToast("Vui lòng nhập dữ liệu!"); return; }
-
-    document.getElementById('result_area').style.display = "block";
-    document.getElementById('qr_area').style.display = "block";
+    if (!raw) return;
 
     raw = raw.replace(/(\d+),(\d+)/g, '$1.$2').replace(/(\d+)\s*-\s*(\d+)/g, '$1-$2');
     let sections = raw.split('|');
@@ -155,10 +150,8 @@ function thucThi() {
     window.billText = "";
 
     sections.forEach((s, idx) => {
-        let p = s.split(':');
-        if (p.length < 2) return;
-        let dR = p[0].trim(), d = convertDai(dR);
-        if (!d) return;
+        let p = s.split(':'); if (p.length < 2) return;
+        let dR = p[0].trim(), d = convertDai(dR); if (!d) return;
 
         window.billText += dR.toUpperCase() + ":\n";
         let ents = p[1].split(','), lineD = [], lastN = [];
@@ -193,13 +186,12 @@ function thucThi() {
     document.getElementById('result_total').innerText = final.toLocaleString();
     document.getElementById('result_detail').innerHTML = detailHTML;
     document.getElementById('sec-code-display').innerText = secCode;
+    document.getElementById('qr_container').style.display = "block";
 
-    // QR Code
     let qrData = GAS_URL + "?id=" + secCode;
     document.getElementById('qrcode-screen').innerHTML = "";
     new QRCode(document.getElementById("qrcode-screen"), { text: qrData, width: 140, height: 140, correctLevel: QRCode.CorrectLevel.L });
 
-    // Send to GAS
     fetch(GAS_URL, { method: "POST", body: JSON.stringify({ dai: sections[0].split(':')[0].toUpperCase(), chiTiet: raw, tongTien: final, secCode: secCode, telegramId: userId }) })
     .then(() => showToast("✅ Đã gửi Telegram!")).catch(() => showToast("❌ Lỗi kết nối!"));
 }
