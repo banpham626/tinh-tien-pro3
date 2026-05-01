@@ -90,7 +90,6 @@
 <div id="toast"></div>
 
 <script>
-// 1. GẮN KẾT TELEGRAM VÀ LẤY ID KHÁCH HÀNG
 const tg = window.Telegram.WebApp;
 tg.expand();
 
@@ -100,7 +99,7 @@ if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
 }
 
 // =========================================================================
-// 2. 🔴 QUAN TRỌNG: DÁN LINK GOOGLE APPS SCRIPT (Đã Deploy New Version) VÀO ĐÂY:
+// 🔴 DÁN LINK GOOGLE APPS SCRIPT CỦA BẠN VÀO ĐÂY:
 const GAS_URL = "https://script.google.com/macros/s/AKfycbzwdvEagOorImdtMLu5bky9BlhBDOlBLBeXCneb8h37I_yEG_p5Zbc7xbvPrAXbCxUt/exec"; 
 // =========================================================================
 
@@ -117,26 +116,40 @@ function copyZalo() {
     navigator.clipboard.writeText(window.billText).then(() => { showToast("📋 Đã copy nội dung gửi Zalo!"); });
 }
 
+// HÀM MỚI: NHẬN DIỆN ĐÀI THÔNG MINH
 function convertDai(d) {
-    d = d.toLowerCase().trim();
-    if (d.includes("4dn") || d.includes("4dmn")) return "4dn";
-    if (d.includes("2dn") || d.includes("2dmn")) return "2dn";
-    if (d.includes("3dn") || d.includes("3dt") || d.includes("3dmn")) return "3dt";
-    if (d.includes("mb") || d.includes("hn") || d.includes("hà nội")) return "hn";
-    if (/\d/.test(d)) return null; 
-    return d; 
+    // Lột bỏ dấu tiếng Việt để dễ so sánh
+    let dClean = d.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d");
+    
+    // Nếu chứa cụm từ đài chuẩn miền
+    if (dClean.includes("mb") || dClean.includes("hn") || dClean.includes("ha noi")) return "hn";
+    
+    // Mở khóa: Cho phép tất cả các đài bắt đầu bằng 2d, 3d, 4d (ví dụ: 2dt, 3dmt, 4dn...)
+    if (/^[234]d/.test(dClean)) return d.toLowerCase().trim();
+    
+    // Chặn các trường hợp đánh nhầm số (vd: 1vungtau), nhưng vẫn cho phép tên chữ bình thường
+    if (/^\d/.test(dClean)) return null; 
+    
+    return d.toLowerCase().trim(); 
 }
 
+// HÀM MỚI: NHẬN DIỆN KIỂU CHƠI SIÊU TỐC ĐỘ (BAO LỖI CHÍNH TẢ)
 function mapLoaiChoi(s) {
-    s = s.toLowerCase().trim();
-    if (s.includes("xc")) return "xc";
-    if (s.includes("da") || s.includes("đá")) return "da";
-    if (s.includes("dd") || s.includes("đầu đuôi")) return "dd";
-    if (s.includes("dau") || s.includes("đầu")) return "dau";
-    if (s.includes("duoi") || s.includes("đuôi")) return "duoi";
-    if (s.includes("7lo")) return "b7lo";
-    if (s.includes("4lo")) return "b4lo";
-    if (s.includes("bao") || s.includes("lo") || s === "b") return "b";
+    // 1. Lột bỏ dấu tiếng việt
+    let sClean = s.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d");
+    // 2. Ép sát chữ lại với nhau (ví dụ: "xiu chu" -> "xiuchu")
+    sClean = sClean.replace(/\s+/g, ""); 
+    
+    // 3. So sánh cực kỳ bao dung
+    if (sClean.includes("dauduoi") || sClean.includes("dd")) return "dd";
+    if (sClean.includes("dau")) return "dau";
+    if (sClean.includes("duoi")) return "duoi";
+    if (sClean.includes("xiuchu") || sClean.includes("xc") || sClean.includes("cx")) return "xc"; // Chấp luôn gõ lộn cx
+    if (sClean.includes("da")) return "da"; // Đá
+    if (sClean.includes("7lo") || sClean.includes("b7lo") || sClean.includes("bao7lo")) return "b7lo";
+    if (sClean.includes("4lo") || sClean.includes("b4lo") || sClean.includes("bao4lo")) return "b4lo";
+    if (sClean.includes("bao") || sClean.includes("lo") || sClean === "b") return "b";
+    
     return null;
 }
 
@@ -167,7 +180,7 @@ function thucThi() {
 
     sections.forEach((sec, idx) => {
         let parts = sec.split(':');
-        if (parts.length < 2) { detailHTML += `<div class="error-row">⚠️ Dòng ${idx+1}: Sai định dạng.</div>`; return; }
+        if (parts.length < 2) { detailHTML += `<div class="error-row">⚠️ Dòng ${idx+1}: Sai định dạng (Thiếu dấu : ngăn cách đài).</div>`; return; }
         
         let daiRaw = parts[0].trim();
         let dai = convertDai(daiRaw);
@@ -187,6 +200,8 @@ function thucThi() {
             let soGocRaw = mSo ? mSo[0].trim() : "";
             let soGoc = soGocRaw.replace(/[\(\)]/g, ""); 
             let loaiRaw = conLai.replace(soGocRaw, "").trim();
+            
+            // Đưa qua bộ lọc mới siêu việt
             let loai = mapLoaiChoi(loaiRaw);
 
             if (!loai) { lineDetail.push(`<span style="color:orange">[Lỗi kiểu]</span>`); return; }
@@ -226,7 +241,7 @@ function thucThi() {
     new QRCode(document.getElementById("qrcode-screen"), { text: qrData, width: 120, height: 120 });
     if (document.getElementById('qrcode-bill')) { new QRCode(document.getElementById("qrcode-bill"), { text: qrData, width: 90, height: 90 }); }
 
-    // 3. BẮN DỮ LIỆU SANG GOOGLE (Gửi kèm ID Telegram)
+    // BẮN DỮ LIỆU SANG GOOGLE
     let payloadData = { 
         dai: sections[0].split(':')[0].toUpperCase(), 
         chiTiet: input, 
