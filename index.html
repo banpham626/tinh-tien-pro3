@@ -193,7 +193,7 @@ function thucThi() {
     new QRCode(document.getElementById("qrcode-screen"), { text: qrData, width: 140, height: 140, correctLevel: QRCode.CorrectLevel.L });
 
     fetch(GAS_URL, { method: "POST", body: JSON.stringify({ dai: sections[0].split(':')[0].toUpperCase(), chiTiet: raw, tongTien: final, secCode: secCode, telegramId: userId }) })
-    .then(() => showToast("✅ Đã gửi Telegram!")).catch(() => showToast("❌ Lỗi kết nối!"));
+    .then(() => showToast("✅ Đã gửi Telegram!")).catch(() => showToast("❌ Bạn đã nhập sai cú pháp!"));
 }
 
 function xoaHet() { location.reload(); }
