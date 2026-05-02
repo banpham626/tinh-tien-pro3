@@ -186,8 +186,8 @@ function thucThi() {
     let totalAll = 0, detailHTML = "", secCode = "SEC-" + Math.random().toString(36).substr(2, 5).toUpperCase();
     window.billText = "";
     
-    // ĐÂY LÀ PHẦN MỚI: Mảng chứa dữ liệu chuẩn bị cho hệ thống tự động dò số
-    let jsonArray = []; 
+    // ĐÂY LÀ PHẦN MỚI: Khởi tạo mảng jsonArray để gom dữ liệu
+    let jsonArray = [];
 
     sections.forEach((s, idx) => {
         let p = s.split(':'); if (p.length < 2) return;
@@ -223,7 +223,7 @@ function thucThi() {
                 lineD.push(`<span class="num-blue">${curN.join('-')}</span><span class="label-type">${lo}</span><span class="cash-red">${tien}</span>`);
                 window.billText += `${curN.join('-')} ${lo} ${tien}\n`;
                 
-                // ĐÂY LÀ PHẦN MỚI: Đóng gói dữ liệu chuẩn ném vào mảng
+                // ĐÂY LÀ PHẦN MỚI: Đẩy dữ liệu vào mảng
                 jsonArray.push({
                     dai: dR.toUpperCase(),
                     so: curN.join('-'),
@@ -236,41 +236,6 @@ function thucThi() {
         });
         detailHTML += `<div class="valid-row"><strong>${dR.toUpperCase()}</strong><br>${lineD.join(' | ')}</div>`;
     });
-
-    let final = Math.round(totalAll);
-    
-    document.getElementById('result_total').innerText = final.toLocaleString();
-    document.getElementById('result_detail').innerHTML = detailHTML;
-    document.getElementById('sec-code-display').innerText = secCode;
-    document.getElementById('qr_container').style.display = "block";
-    
-    let qrData = GAS_URL + "?id=" + secCode;
-    document.getElementById('qrcode-screen').innerHTML = "";
-    new QRCode(document.getElementById("qrcode-screen"), { text: qrData, width: 140, height: 140, correctLevel: QRCode.CorrectLevel.L });
-
-    let now = new Date();
-    document.getElementById('print_time').innerText = "Thời gian: " + now.toLocaleTimeString('vi-VN') + " - " + now.toLocaleDateString('vi-VN');
-    document.getElementById('print_detail_content').innerHTML = detailHTML;
-    document.getElementById('print_total_content').innerText = final.toLocaleString();
-    
-    document.getElementById('print_qr_content').innerHTML = "";
-    new QRCode(document.getElementById("print_qr_content"), { text: qrData, width: 160, height: 160, correctLevel: QRCode.CorrectLevel.L });
-    document.getElementById('print_sec_content').innerText = secCode;
-
-    // ĐÂY LÀ PHẦN MỚI: Gửi kèm thuộc tính "duLieuChuan" lên Google Sheet
-    fetch(GAS_URL, { 
-        method: "POST", 
-        body: JSON.stringify({ 
-            dai: sections[0].split(':')[0].toUpperCase(), 
-            chiTiet: raw, 
-            tongTien: final, 
-            secCode: secCode, 
-            telegramId: userId,
-            duLieuChuan: JSON.stringify(jsonArray) // Ép mảng thành chuỗi để gửi đi
-        }) 
-    })
-    .then(() => showToast("✅ Đã gửi Telegram!")).catch(() => showToast("❌ Lỗi kết nối!"));
-}
 
     let final = Math.round(totalAll);
     
@@ -294,8 +259,18 @@ function thucThi() {
     new QRCode(document.getElementById("print_qr_content"), { text: qrData, width: 160, height: 160, correctLevel: QRCode.CorrectLevel.L });
     document.getElementById('print_sec_content').innerText = secCode;
 
-    // Gửi Telegram
-    fetch(GAS_URL, { method: "POST", body: JSON.stringify({ dai: sections[0].split(':')[0].toUpperCase(), chiTiet: raw, tongTien: final, secCode: secCode, telegramId: userId }) })
+    // ĐÂY LÀ PHẦN MỚI: Gửi kèm dữ liệu chuẩn lên Google Apps Script
+    fetch(GAS_URL, { 
+        method: "POST", 
+        body: JSON.stringify({ 
+            dai: sections[0].split(':')[0].toUpperCase(), 
+            chiTiet: raw, 
+            tongTien: final, 
+            secCode: secCode, 
+            telegramId: userId,
+            duLieuChuan: JSON.stringify(jsonArray) 
+        }) 
+    })
     .then(() => showToast("✅ Đã gửi Telegram!")).catch(() => showToast("❌ Bạn đã nhập sai cú pháp!"));
 }
 
