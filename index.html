@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Hệ Thống Tính Tiền MMO - Đa Nền Tảng</title>
+    <title>Hệ Thống Tính Tiền XS- Đa Nền Tảng</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
@@ -100,7 +100,7 @@ tg.expand();
 let userId = tg.initDataUnsafe?.user?.id || "";
 
 // 🔴 DÁN LINK GOOGLE CỦA BẠN VÀO ĐÂY
-const GAS_URL = "https://script.google.com/macros/s/AKfycbzwdvEagOorImdtMLu5bky9BlhBDOlBLBeXCneb8h37I_yEG_p5Zbc7xbvPrAXbCxUt/exec"; 
+const GAS_URL = "https://script.google.com/macros/s/AKfycbykcFn_r3uChs1FtB5ezYYZpImWm7lhgmePtiHh-RiPWIH6SctDk9ZEZlkurJfqhNxs/exec"; 
 
 window.billText = "";
 
@@ -159,9 +159,19 @@ function thucThi() {
         ents.forEach(e => {
             e = e.trim();
             let mMon = e.match(/(\d+(\.\d+)?)$/); if (!mMon) return;
-            let tien = parseFloat(mMon[1]), con = e.replace(mMon[1], "").trim();
+            let tien = parseFloat(mMon[1]);
+            
+            // LỖI NẰM Ở ĐÂY ĐÃ ĐƯỢC FIX: Cắt chính xác phần tiền ở cuối chuỗi bằng độ dài, 
+            // tránh lỗi replace nhầm các số giống nhau (Ví dụ: "30 ĐẦU 30" -> xóa nhầm số 30 đầu tiên)
+            let con = e.slice(0, e.length - mMon[1].length).trim();
+            
             let mSo = con.match(/[0-9\-\(\)]{2,}/g), sGR = mSo ? mSo[0].trim() : "";
-            let sG = sGR.replace(/[\(\)]/g, ""), lo = mapLoaiChoi(con.replace(sGR, "").trim());
+            let sG = sGR.replace(/[\(\)]/g, "");
+            
+            // Xử lý chuỗi kiểu chơi tách biệt an toàn
+            let loStr = sGR ? con.replace(sGR, "").trim() : con;
+            let lo = mapLoaiChoi(loStr);
+            
             if (!lo) return;
 
             let curN = sG ? sG.split('-').filter(n => n.length >= 2) : lastN;
