@@ -176,13 +176,23 @@ function layHeSo(dai, loai, len) {
     const k = { "da":{"1D":36,"2D":72,"3D":216,"4D":432,"MB":54}, "xc":{"1D":2,"2D":4,"3D":6,"4D":8,"MB":4}, "dd":{"1D":2,"2D":4,"3D":6,"4D":8,"MB":5}, "dau":{"1D":1,"2D":2,"3D":3,"4D":4,"MB":1}, "duoi":{"1D":1,"2D":2,"3D":3,"4D":4,"MB":1}, "b7lo":{"1D":7,"2D":14,"3D":21,"4D":28,"MB":7}, "b4lo":{"1D":4,"2D":8,"3D":12,"4D":16,"MB":4} };
     return k[loai]?.[n] || 0;
 }
-
+    
 function thucThi() {
     let raw = document.getElementById('raw_input').value;
     if (!raw) return;
 
+    // ==========================================
+    // BẢN VÁ LỖI: TÁCH CÁC CỤM DÍNH LIỀN TRƯỚC KHI ĐỔI THẬP PHÂN
+    // Nếu thấy dấu phẩy nằm giữa số, mà số đằng sau có từ 2 chữ số trở lên (vd: 10,71)
+    // thì ép thêm 1 dấu cách vào giữa thành (10, 71) để bảo toàn vách ngăn.
+    raw = raw.replace(/(\d+),(\d{2,})/g, '$1, $2');
+    // ==========================================
+
+    // Lệnh cũ của bạn: Đổi thập phân (vd: 0,5 -> 0.5) và xóa khoảng trắng dấu trừ
     raw = raw.replace(/(\d+),(\d+)/g, '$1.$2').replace(/(\d+)\s*-\s*(\d+)/g, '$1-$2');
+    
     let sections = raw.split('|');
+    
     let totalAll = 0, detailHTML = "", secCode = "SEC-" + Math.random().toString(36).substr(2, 5).toUpperCase();
     window.billText = "";
     
