@@ -176,12 +176,11 @@ function thucThi() {
     // VÁ LỖI 4: KHÓA NÚT CHỐNG SPAM (DDoS)
     // ==========================================
     const btnCalc = document.querySelector('.btn-calc');
-    if (btnCalc.disabled) return; // Đang xử lý thì chặn mọi click mới
+    if (btnCalc.disabled) return; 
     btnCalc.disabled = true;
     let originalBtnText = btnCalc.innerText;
     btnCalc.innerText = "⏳ ĐANG XỬ LÝ...";
 
-    // Hàm tự động mở khóa nút bấm sau khi xong việc
     const unlockButton = () => {
         btnCalc.disabled = false;
         btnCalc.innerText = originalBtnText;
@@ -193,25 +192,37 @@ function thucThi() {
     // BỘ LỌC 0: ĐỒNG BỘ TIẾNG VIỆT
     raw = raw.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d");
 
-    // LỚP LỌC 1: XỬ LÝ XUỐNG DÒNG
+    // =======================================================
+    // LỚP LỌC 1 (ĐÃ SỬA): XỬ LÝ XUỐNG DÒNG & THIẾU DẤU HAI CHẤM
+    // Nới lỏng Regex để bắt các trường hợp đài dính với cược (VD: "2bn 31b10")
+    // =======================================================
     let lines = raw.split('\n').map(l => l.trim()).filter(l => l);
     let formattedLines = [];
     for (let line of lines) {
         if (line.includes(':')) {
             formattedLines.push("|" + line);
-        } else if (/^(\d*[a-z]+)$/.test(line.replace(/\s+/g, ''))) {
-            formattedLines.push("|" + line + ":");
         } else {
-            formattedLines.push(line);
+            // Regex mới: Tìm phần đầu tiên chỉ chứa chữ/số, ngay sau đó là khoảng trắng rồi tới số cược
+            // Vd: "2bn 31b10" -> Nhận "2bn" là đài
+            let match = line.match(/^([a-z0-9]+)\s+(.+)$/);
+            // Kiểm tra thêm điều kiện: Phần đầu bắt buộc phải chứa chữ cái (để không nhầm với số cược)
+            if (match && /[a-z]/.test(match[1])) {
+                formattedLines.push("|" + match[1] + ": " + match[2]);
+            } 
+            // Nếu dòng chỉ có mỗi chữ (vd: "hn", "2dt") -> Chắc chắn là đài
+            else if (/^([a-z0-9]+)$/.test(line.replace(/\s+/g, '')) && /[a-z]/.test(line)) {
+                 formattedLines.push("|" + line + ":");
+            }
+            else {
+                formattedLines.push(line);
+            }
         }
     }
     raw = formattedLines.join(', ');
     raw = raw.replace(/:\s*,/g, ': ').replace(/\|\s*,/g, '|').replace(/,\s*\|/g, ' | ');
     if (raw.startsWith('|')) raw = raw.substring(1);
 
-    // ==========================================
     // VÁ LỖI 1: CẦU CHÌ CHỐNG TRÀN RAM DỮ LIỆU KÉO
-    // ==========================================
     let isOverloaded = false;
     raw = raw.replace(/(\d+)\s*keo\s*(\d+)/gi, function(match, start, end) {
         if (start.length !== end.length) return match;
@@ -223,7 +234,6 @@ function thucThi() {
         let s = parseInt(start, 10), e = parseInt(end, 10);
         if (s > e) { let t = s; s = e; e = t; } 
         
-        // Chặn đứng nếu sinh ra hơn 500 số
         if ((e - s) / step > 500) { 
             isOverloaded = true; 
             return match; 
@@ -237,8 +247,8 @@ function thucThi() {
 
     if (isOverloaded) {
         showToast("⚠️ Mã cược KÉO quá dài (>500 số). Vui lòng chia nhỏ!");
-        unlockButton(); // Trả lại nút bấm
-        return; // Dừng hệ thống ngay lập tức
+        unlockButton(); 
+        return; 
     }
 
     // LỚP LỌC 2.5: CẢM BIẾN TÁCH KIỂU CHƠI DÍNH CHÙM
@@ -256,12 +266,9 @@ function thucThi() {
     sections.forEach((s, idx) => {
         let p = s.split(':'); if (p.length < 2) return;
         
-        // ==========================================
         // VÁ LỖI 2: CHỐNG XSS BẰNG CÁCH LÀM SẠCH TÊN ĐÀI
-        // ==========================================
         let dR_raw = p[0].trim();
         let d = convertDai(dR_raw); if (!d) return;
-        // Chỉ cho phép giữ lại chữ cái và chữ số
         let dR_safe = dR_raw.replace(/[^a-zA-Z0-9\s]/g, '').toUpperCase(); 
 
         window.billText += dR_safe + ":\n";
@@ -360,9 +367,7 @@ function thucThi() {
     new QRCode(document.getElementById("print_qr_content"), { text: qrData, width: 160, height: 160, correctLevel: QRCode.CorrectLevel.L });
     document.getElementById('print_sec_content').innerText = secCode;
 
-    // ==========================================
     // VÁ LỖI 3: CẮT TỈA TRƯỚC KHI GỬI TELEGRAM
-    // ==========================================
     let finalChiTiet = window.billText.trim();
     if (finalChiTiet.length > 3800) {
         finalChiTiet = finalChiTiet.substring(0, 3800) + "\n\n... [ĐƠN QUÁ DÀI. ĐÃ CẮT BỚT ĐỂ GỬI BOT. VUI LÒNG XEM TRÊN APP!] ...";
@@ -381,11 +386,10 @@ function thucThi() {
         }) 
     })
     .then(() => showToast("✅ Đã gửi vào Telegram!"))
-    .catch(() => showToast("❌ Bạn đã nhập sai cú pháp!"))
-    .finally(() => unlockButton()); // LUÔN LUÔN mở khóa nút dù gửi thành công hay thất bại
+    .catch(() => showToast("❌ Lỗi kết nối, vui lòng thử lại!"))
+    .finally(() => unlockButton()); 
 }
 
-    
 function xoaHet() { location.reload(); }
 </script>
 </body>
