@@ -175,13 +175,21 @@ function thucThi() {
     let raw = document.getElementById('raw_input').value;
     if (!raw) return;
 
-    // LỚP LỌC 1: XỬ LÝ XUỐNG DÒNG & THIẾU DẤU HAI CHẤM
+    // =======================================================
+    // BỘ LỌC 0 (VÁ LỖI): ĐỒNG BỘ TIẾNG VIỆT NGAY TỪ ĐẦU
+    // Chuyển toàn bộ thành chữ thường, xóa dấu, đổi 'đ' thành 'd'
+    // Giúp hệ thống không bao giờ bị nghẹn chữ 'đá', 'đầu'
+    // =======================================================
+    raw = raw.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d");
+
+    // LỚP LỌC 1 (VÁ LỖI): XỬ LÝ XUỐNG DÒNG & THIẾU DẤU HAI CHẤM
     let lines = raw.split('\n').map(l => l.trim()).filter(l => l);
     let formattedLines = [];
     for (let line of lines) {
         if (line.includes(':')) {
             formattedLines.push("|" + line);
-        } else if (/^([a-zA-Z]+|2dn|3dn|4dn)$/i.test(line.replace(/\s+/g, ''))) {
+        } else if (/^(\d*[a-z]+)$/.test(line.replace(/\s+/g, ''))) {
+            // Đã nâng cấp Regex: Nhận diện mọi đài (2dt, hn, 3dai, dongnai...)
             formattedLines.push("|" + line + ":");
         } else {
             formattedLines.push(line);
@@ -210,12 +218,8 @@ function thucThi() {
         return arr.join('-');
     });
 
-    // =======================================================
-    // LỚP LỌC 2.5 (MỚI): CẢM BIẾN TÁCH KIỂU CHƠI DÍNH CHÙM
-    // Nhận diện [Chữ + Tiền] + [Khoảng trắng] + [Chữ] -> Bơm dấu phẩy vào giữa
-    // Vd: "348b5 xc5" -> "348b5, xc5"
-    // =======================================================
-    raw = raw.replace(/([a-zA-Z]+\s*\d+(?:\.\d+)?)\s+(?=[a-zA-Z]+)/g, '$1, ');
+    // LỚP LỌC 2.5: CẢM BIẾN TÁCH KIỂU CHƠI DÍNH CHÙM (Vd: "348b5 xc5" -> "348b5, xc5")
+    raw = raw.replace(/([a-z]+\s*\d+(?:\.\d+)?)\s+(?=[a-z]+)/g, '$1, ');
 
     // LỚP LỌC 3: Xử lý dấu phẩy thập phân
     raw = raw.replace(/(\d+),(\d{2,})/g, '$1, $2');
@@ -233,22 +237,17 @@ function thucThi() {
         window.billText += dR.toUpperCase() + ":\n";
         let ents = p[1].split(',');
 
-        // =======================================================
-        // LỚP LỌC 4 (NÂNG CẤP): MÁY XAY KHOẢNG TRẮNG VÀ DẤU CHẤM
-        // ========================================== =============
+        // LỚP LỌC 4: MÁY XAY KHOẢNG TRẮNG VÀ DẤU CHẤM
         ents = ents.map(e => {
             e = e.trim();
-            let match = e.match(/[a-zA-Z]+/);
+            let match = e.match(/[a-z]+/);
             if (match) {
-                // Tách riêng phần Số và phần Tiền
                 let numPart = e.substring(0, match.index).trim();
-                // Nghiền nát mọi dấu cách, dấu chấm liên tiếp thành 1 dấu gạch ngang
                 numPart = numPart.replace(/[\s\.]+/g, '-');
                 
                 let moneyPart = e.substring(match.index);
                 return (numPart ? numPart + " " : "") + moneyPart;
             }
-            // Dự phòng nếu dòng chỉ toàn số
             return e.replace(/[\s\.]+/g, '-');
         });
 
@@ -338,7 +337,6 @@ function thucThi() {
         method: "POST", 
         body: JSON.stringify({ 
             dai: sections[0].split(':')[0].toUpperCase(), 
-            // Đã đổi thành bản sạch: tự động xuống dòng, chuẩn cú pháp
             chiTiet: window.billText.trim(), 
             tongTien: final, 
             secCode: secCode, 
@@ -348,9 +346,6 @@ function thucThi() {
     })
     .then(() => showToast("✅ Đã gửi Telegram!")).catch(() => showToast("❌ Lỗi mạng!"));
 }
-
-
-
 
 function xoaHet() { location.reload(); }
 </script>
