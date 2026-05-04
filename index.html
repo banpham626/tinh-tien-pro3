@@ -172,88 +172,56 @@ function layHeSo(dai, loai, len) {
 }
     
 function thucThi() {
-    // ==========================================
-    // VÁ LỖI 4: KHÓA NÚT CHỐNG SPAM (DDoS)
-    // ==========================================
-    const btnCalc = document.querySelector('.btn-calc');
-    if (btnCalc.disabled) return; 
-    btnCalc.disabled = true;
-    let originalBtnText = btnCalc.innerText;
-    btnCalc.innerText = "⏳ ĐANG XỬ LÝ...";
-
-    const unlockButton = () => {
-        btnCalc.disabled = false;
-        btnCalc.innerText = originalBtnText;
-    };
-
     let raw = document.getElementById('raw_input').value;
-    if (!raw) { unlockButton(); return; }
+    if (!raw) return;
 
     // =======================================================
-    // BỘ LỌC 0: ĐỒNG BỘ TIẾNG VIỆT & ÉP LỖI "ĐÁ" / "ĐA" -> "DA"
+    // BỘ LỌC 0 (VÁ LỖI): ĐỒNG BỘ TIẾNG VIỆT NGAY TỪ ĐẦU
+    // Chuyển toàn bộ thành chữ thường, xóa dấu, đổi 'đ' thành 'd'
+    // Giúp hệ thống không bao giờ bị nghẹn chữ 'đá', 'đầu'
     // =======================================================
-    raw = raw.toLowerCase();
-    raw = raw.replace(/đá/g, "da").replace(/đa/g, "da"); // Cập nhật ép cứng lỗi gõ
-    raw = raw.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d");
+    raw = raw.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d");
 
-    // =======================================================
-    // LỚP LỌC 1: XỬ LÝ XUỐNG DÒNG & THIẾU DẤU HAI CHẤM
-    // =======================================================
+    // LỚP LỌC 1 (VÁ LỖI): XỬ LÝ XUỐNG DÒNG & THIẾU DẤU HAI CHẤM
     let lines = raw.split('\n').map(l => l.trim()).filter(l => l);
     let formattedLines = [];
     for (let line of lines) {
         if (line.includes(':')) {
             formattedLines.push("|" + line);
+        } else if (/^(\d*[a-z]+)$/.test(line.replace(/\s+/g, ''))) {
+            // Đã nâng cấp Regex: Nhận diện mọi đài (2dt, hn, 3dai, dongnai...)
+            formattedLines.push("|" + line + ":");
         } else {
-            let match = line.match(/^([a-z0-9]+)\s+(.+)$/);
-            if (match && /[a-z]/.test(match[1])) {
-                formattedLines.push("|" + match[1] + ": " + match[2]);
-            } 
-            else if (/^([a-z0-9]+)$/.test(line.replace(/\s+/g, '')) && /[a-z]/.test(line)) {
-                 formattedLines.push("|" + line + ":");
-            }
-            else {
-                formattedLines.push(line);
-            }
+            formattedLines.push(line);
         }
     }
     raw = formattedLines.join(', ');
     raw = raw.replace(/:\s*,/g, ': ').replace(/\|\s*,/g, '|').replace(/,\s*\|/g, ' | ');
     if (raw.startsWith('|')) raw = raw.substring(1);
 
-    // VÁ LỖI 1: CẦU CHÌ CHỐNG TRÀN RAM DỮ LIỆU KÉO
-    let isOverloaded = false;
+    // LỚP LỌC 2: XỬ LÝ "KÉO" (Sinh số tự động)
     raw = raw.replace(/(\d+)\s*keo\s*(\d+)/gi, function(match, start, end) {
         if (start.length !== end.length) return match;
         let step = 1;
         for (let i = 0; i < start.length; i++) {
-            if (start[i] !== end[i]) { step = Math.pow(10, start.length - 1 - i); break; }
+            if (start[i] !== end[i]) {
+                step = Math.pow(10, start.length - 1 - i);
+                break;
+            }
         }
         let arr = [];
         let s = parseInt(start, 10), e = parseInt(end, 10);
         if (s > e) { let t = s; s = e; e = t; } 
-        
-        if ((e - s) / step > 500) { 
-            isOverloaded = true; 
-            return match; 
-        }
-
         for (let i = s; i <= e; i += step) {
             arr.push(i.toString().padStart(start.length, '0'));
         }
         return arr.join('-');
     });
 
-    if (isOverloaded) {
-        showToast("⚠️ Mã cược KÉO quá dài (>500 số). Vui lòng chia nhỏ!");
-        unlockButton(); 
-        return; 
-    }
-
-    // LỚP LỌC 2.5: CẢM BIẾN TÁCH KIỂU CHƠI DÍNH CHÙM
+    // LỚP LỌC 2.5: CẢM BIẾN TÁCH KIỂU CHƠI DÍNH CHÙM (Vd: "348b5 xc5" -> "348b5, xc5")
     raw = raw.replace(/([a-z]+\s*\d+(?:\.\d+)?)\s+(?=[a-z]+)/g, '$1, ');
 
-    // LỚP LỌC 3: MÁY NGHIỀN DẤU THẬP PHÂN VÀ KHOẢNG TRẮNG
+    // LỚP LỌC 3: Xử lý dấu phẩy thập phân
     raw = raw.replace(/(\d+),(\d{2,})/g, '$1, $2');
     raw = raw.replace(/(\d+),(\d+)/g, '$1.$2').replace(/(\d+)\s*-\s*(\d+)/g, '$1-$2');
     
@@ -264,22 +232,19 @@ function thucThi() {
 
     sections.forEach((s, idx) => {
         let p = s.split(':'); if (p.length < 2) return;
-        
-        // VÁ LỖI 2: CHỐNG XSS BẰNG CÁCH LÀM SẠCH TÊN ĐÀI
-        let dR_raw = p[0].trim();
-        let d = convertDai(dR_raw); if (!d) return;
-        let dR_safe = dR_raw.replace(/[^a-zA-Z0-9\s]/g, '').toUpperCase(); 
+        let dR = p[0].trim(), d = convertDai(dR); if (!d) return;
 
-        window.billText += dR_safe + ":\n";
+        window.billText += dR.toUpperCase() + ":\n";
         let ents = p[1].split(',');
 
-        // LỚP LỌC 4: MÁY XAY KHOẢNG TRẮNG Ở PHẦN SỐ
+        // LỚP LỌC 4: MÁY XAY KHOẢNG TRẮNG VÀ DẤU CHẤM
         ents = ents.map(e => {
             e = e.trim();
             let match = e.match(/[a-z]+/);
             if (match) {
                 let numPart = e.substring(0, match.index).trim();
                 numPart = numPart.replace(/[\s\.]+/g, '-');
+                
                 let moneyPart = e.substring(match.index);
                 return (numPart ? numPart + " " : "") + moneyPart;
             }
@@ -288,6 +253,7 @@ function thucThi() {
 
         let lineD = [], lastN = [];
 
+        // --- BẮT ĐẦU VÒNG LẶP TÍNH TIỀN ---
         ents.forEach(e => {
             e = e.trim();
             let mMon = e.match(/(\d+(\.\d+)?)$/); if (!mMon) return;
@@ -313,6 +279,7 @@ function thucThi() {
                 }
                 totalAll += sub;
                 
+                // --- GIAO DIỆN CÙNG DÒNG (INLINE) ---
                 lineD.push(`
                     <div style="padding: 6px 0; border-bottom: 1px dashed #ccc; line-height: 1.6;">
                         <span class="num-blue" style="word-break: break-word; font-size: 15px; margin-right: 5px;">${curN.join('-')}</span>
@@ -326,7 +293,7 @@ function thucThi() {
                 window.billText += `${curN.join('-')} ${lo} ${tien}\n`;
                 
                 jsonArray.push({
-                    dai: dR_safe,
+                    dai: dR.toUpperCase(),
                     so: curN.join('-'),
                     kieu: lo,
                     tien: tien
@@ -339,7 +306,7 @@ function thucThi() {
         detailHTML += `
             <div style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 15px;">
                 <div style="font-weight: bold; font-size: 16px; color: #0f172a; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 4px;">
-                    ĐÀI ${dR_safe}
+                    ĐÀI ${dR.toUpperCase()}
                 </div>
                 ${lineD.join('')}
             </div>
@@ -366,27 +333,18 @@ function thucThi() {
     new QRCode(document.getElementById("print_qr_content"), { text: qrData, width: 160, height: 160, correctLevel: QRCode.CorrectLevel.L });
     document.getElementById('print_sec_content').innerText = secCode;
 
-    // VÁ LỖI 3: CẮT TỈA TRƯỚC KHI GỬI TELEGRAM
-    let finalChiTiet = window.billText.trim();
-    if (finalChiTiet.length > 3800) {
-        finalChiTiet = finalChiTiet.substring(0, 3800) + "\n\n... [ĐƠN QUÁ DÀI. ĐÃ CẮT BỚT ĐỂ GỬI BOT. VUI LÒNG XEM TRÊN APP!] ...";
-        showToast("⚠️ Đơn quá dài! Đã cắt bớt tin nhắn gửi Bot.");
-    }
-
     fetch(GAS_URL, { 
         method: "POST", 
         body: JSON.stringify({ 
-            dai: sections.length > 0 ? sections[0].split(':')[0].replace(/[^a-zA-Z0-9\s]/g, '').toUpperCase().trim() : "", 
-            chiTiet: finalChiTiet, 
+            dai: sections[0].split(':')[0].toUpperCase(), 
+            chiTiet: window.billText.trim(), 
             tongTien: final, 
             secCode: secCode, 
             telegramId: userId,
             duLieuChuan: JSON.stringify(jsonArray) 
         }) 
     })
-    .then(() => showToast("✅ Đã gửi vào Telegram!"))
-    .catch(() => showToast("❌ Lỗi kết nối, vui lòng thử lại!"))
-    .finally(() => unlockButton()); 
+    .then(() => showToast("✅ Đã gửi Telegram!")).catch(() => showToast("❌ Bạn đã nhập sai cú pháp!"));
 }
 
 function xoaHet() { location.reload(); }
