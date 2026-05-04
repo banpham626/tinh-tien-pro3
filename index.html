@@ -58,27 +58,21 @@
 
         /* --- TÍNH NĂNG ĐỊNH DẠNG BẢN IN --- */
         @media print {
-            /* Ẩn giao diện App khi in */
             body > :not(#print_area) { display: none !important; }
-            
-            /* Chỉ hiện khu vực Biên nhận */
             #print_area { 
                 display: block !important; 
                 width: 100%; 
-                max-width: 400px; /* Mô phỏng khổ giấy in bill */
+                max-width: 400px; 
                 margin: 0 auto; 
                 color: black; 
                 font-family: sans-serif;
             }
-            /* Xóa viền trang web mặc định */
             @page { margin: 5mm; } 
-            
-            /* Tinh chỉnh màu sắc cho bản in đen trắng */
             .num-blue { color: black !important; font-weight: bold; }
             .cash-red { color: black !important; font-weight: bold; }
             .label-type { border: 1px solid #000; background: transparent; }
         }
-        #print_area { display: none; } /* Ẩn khu vực này khi đang dùng App bình thường */
+        #print_area { display: none; }
     </style>
 </head>
 <body>
@@ -110,7 +104,6 @@
     </div>
 </div>
 
-<!-- KHU VỰC ẨN: CHỈ DÀNH RIÊNG CHO MÁY IN -->
 <div id="print_area">
     <h2 style="text-align: center; margin: 0; color: black;">BIÊN NHẬN ĐỐI SOÁT</h2>
     <div id="print_time" style="text-align: center; font-size: 14px; margin-bottom: 20px; color: #333;"></div>
@@ -182,7 +175,6 @@ function thucThi() {
     let raw = document.getElementById('raw_input').value;
     if (!raw) return;
 
-    // LỚP LỌC 1: XỬ LÝ XUỐNG DÒNG & THIẾU DẤU HAI CHẤM
     let lines = raw.split('\n').map(l => l.trim()).filter(l => l);
     let formattedLines = [];
     for (let line of lines) {
@@ -198,7 +190,6 @@ function thucThi() {
     raw = raw.replace(/:\s*,/g, ': ').replace(/\|\s*,/g, '|').replace(/,\s*\|/g, ' | ');
     if (raw.startsWith('|')) raw = raw.substring(1);
 
-    // LỚP LỌC 2: XỬ LÝ "KÉO" (Sinh số tự động)
     raw = raw.replace(/(\d+)\s*keo\s*(\d+)/gi, function(match, start, end) {
         if (start.length !== end.length) return match;
         let step = 1;
@@ -217,7 +208,6 @@ function thucThi() {
         return arr.join('-');
     });
 
-    // LỚP LỌC 3: Xử lý dấu phẩy
     raw = raw.replace(/(\d+),(\d{2,})/g, '$1, $2');
     raw = raw.replace(/(\d+),(\d+)/g, '$1.$2').replace(/(\d+)\s*-\s*(\d+)/g, '$1-$2');
     
@@ -233,7 +223,6 @@ function thucThi() {
         window.billText += dR.toUpperCase() + ":\n";
         let ents = p[1].split(',');
 
-        // LỚP LỌC 4: ÉP DẤU CHẤM (.) THÀNH GẠCH NỐI (-) Ở PHẦN SỐ
         ents = ents.map(e => {
             e = e.trim();
             let match = e.match(/[a-zA-Z]+/);
@@ -272,11 +261,16 @@ function thucThi() {
                 }
                 totalAll += sub;
                 
-                // CẬP NHẬT GIAO DIỆN: Dàn hàng dọc, kẻ dòng
+                // ==========================================
+                // BẢN NÂNG CẤP UI: ÉP CÙNG DÒNG (INLINE)
+                // ==========================================
                 lineD.push(`
-                    <div style="padding: 6px 0; border-bottom: 1px dashed #ccc; line-height: 1.5;">
-                        <div class="num-blue" style="word-break: break-word; font-size: 15px;">${curN.join('-')}</div>
-                        <div><span class="label-type">${lo}</span> <span class="cash-red">${tien}</span></div>
+                    <div style="padding: 6px 0; border-bottom: 1px dashed #ccc; line-height: 1.6;">
+                        <span class="num-blue" style="word-break: break-word; font-size: 15px; margin-right: 5px;">${curN.join('-')}</span>
+                        <span style="white-space: nowrap;">
+                            <span class="label-type">${lo}</span> 
+                            <span class="cash-red">${tien}</span>
+                        </span>
                     </div>
                 `);
                 
@@ -293,7 +287,6 @@ function thucThi() {
             }
         });
         
-        // CẬP NHẬT GIAO DIỆN: Đóng khung đài riêng biệt
         detailHTML += `
             <div style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 15px;">
                 <div style="font-weight: bold; font-size: 16px; color: #0f172a; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 4px;">
@@ -306,7 +299,6 @@ function thucThi() {
 
     let final = Math.round(totalAll);
     
-    // Đổ dữ liệu ra màn hình App
     document.getElementById('result_total').innerText = final.toLocaleString();
     document.getElementById('result_detail').innerHTML = detailHTML;
     document.getElementById('sec-code-display').innerText = secCode;
@@ -316,7 +308,6 @@ function thucThi() {
     document.getElementById('qrcode-screen').innerHTML = "";
     new QRCode(document.getElementById("qrcode-screen"), { text: qrData, width: 140, height: 140, correctLevel: QRCode.CorrectLevel.L });
 
-    // --- ĐỔ DỮ LIỆU VÀO KHU VỰC IN ẤN ---
     let now = new Date();
     document.getElementById('print_time').innerText = "Thời gian: " + now.toLocaleTimeString('vi-VN') + " - " + now.toLocaleDateString('vi-VN');
     document.getElementById('print_detail_content').innerHTML = detailHTML;
@@ -326,7 +317,6 @@ function thucThi() {
     new QRCode(document.getElementById("print_qr_content"), { text: qrData, width: 160, height: 160, correctLevel: QRCode.CorrectLevel.L });
     document.getElementById('print_sec_content').innerText = secCode;
 
-    // Gửi kèm dữ liệu chuẩn lên Google Apps Script
     fetch(GAS_URL, { 
         method: "POST", 
         body: JSON.stringify({ 
