@@ -85,7 +85,8 @@
 
 <div class="app-container">
     <h2>Hệ Thống Tính Tiền</h2>
-    <textarea id="raw_input" placeholder="Nhập dữ liệu vào đây...&#10;• Nhiều số: dùng dấu (-)&#10;• Nhiều kiểu: dùng dấu (,)&#10;• Sang đài mới: dùng dấu (|)&#10;VD: 2dn: 11 b1, 11-22 đá 1 | hn: 11 đầu 10"></textarea>    <div class="controls no-print">
+    <textarea id="raw_input" placeholder="Nhập dữ liệu vào đây...&#10;• Nhiều số: dùng dấu (-)&#10;• Nhiều kiểu: dùng dấu (,)&#10;• Sang đài mới: dùng dấu (|)&#10;VD: 2dn: 11 b1, 11-22 đá 1 | hn: 11 đầu 10"></textarea>    
+    <div class="controls no-print">
         <button class="btn-calc" onclick="thucThi()">🚀 XÁC NHẬN</button>
         <button class="btn-copy" onclick="copyZalo()">📋 COPY</button>
         <button class="btn-print" onclick="window.print()">🖨️ IN KẾT QUẢ</button>
@@ -181,20 +182,15 @@ function thucThi() {
     let raw = document.getElementById('raw_input').value;
     if (!raw) return;
 
-    // =======================================================
     // LỚP LỌC 1: XỬ LÝ XUỐNG DÒNG & THIẾU DẤU HAI CHẤM
-    // =======================================================
     let lines = raw.split('\n').map(l => l.trim()).filter(l => l);
     let formattedLines = [];
     for (let line of lines) {
         if (line.includes(':')) {
             formattedLines.push("|" + line);
-        } 
-        // Nếu dòng chỉ toàn chữ cái hoặc đài cố định -> Chắc chắn là đài
-        else if (/^([a-zA-Z]+|2dn|3dn|4dn)$/i.test(line.replace(/\s+/g, ''))) {
+        } else if (/^([a-zA-Z]+|2dn|3dn|4dn)$/i.test(line.replace(/\s+/g, ''))) {
             formattedLines.push("|" + line + ":");
-        } 
-        else {
+        } else {
             formattedLines.push(line);
         }
     }
@@ -202,9 +198,7 @@ function thucThi() {
     raw = raw.replace(/:\s*,/g, ': ').replace(/\|\s*,/g, '|').replace(/,\s*\|/g, ' | ');
     if (raw.startsWith('|')) raw = raw.substring(1);
 
-    // =======================================================
     // LỚP LỌC 2: XỬ LÝ "KÉO" (Sinh số tự động)
-    // =======================================================
     raw = raw.replace(/(\d+)\s*keo\s*(\d+)/gi, function(match, start, end) {
         if (start.length !== end.length) return match;
         let step = 1;
@@ -223,20 +217,13 @@ function thucThi() {
         return arr.join('-');
     });
 
-    // =======================================================
-    // LỚP LỌC 3: GIỮ NGUYÊN BẢN VÁ LỖI CŨ CỦA BẠN (Xử lý dấu phẩy)
-    // =======================================================
-    // Tách các cụm dính liền trước khi đổi thập phân
+    // LỚP LỌC 3: Xử lý dấu phẩy
     raw = raw.replace(/(\d+),(\d{2,})/g, '$1, $2');
-    // Đổi thập phân và xóa khoảng trắng dấu trừ
     raw = raw.replace(/(\d+),(\d+)/g, '$1.$2').replace(/(\d+)\s*-\s*(\d+)/g, '$1-$2');
     
     let sections = raw.split('|');
-    
     let totalAll = 0, detailHTML = "", secCode = "SEC-" + Math.random().toString(36).substr(2, 5).toUpperCase();
     window.billText = "";
-    
-    // Khởi tạo mảng jsonArray để gom dữ liệu
     let jsonArray = [];
 
     sections.forEach((s, idx) => {
@@ -246,14 +233,11 @@ function thucThi() {
         window.billText += dR.toUpperCase() + ":\n";
         let ents = p[1].split(',');
 
-        // =======================================================
         // LỚP LỌC 4: ÉP DẤU CHẤM (.) THÀNH GẠCH NỐI (-) Ở PHẦN SỐ
-        // =======================================================
         ents = ents.map(e => {
             e = e.trim();
-            let match = e.match(/[a-zA-Z]+/); // Tìm vị trí chữ cái cược (da, xc, b...)
+            let match = e.match(/[a-zA-Z]+/);
             if (match) {
-                // Chỉ đổi dấu chấm thành gạch ngang ở phần số, giữ nguyên phần tiền
                 let numPart = e.substring(0, match.index).replace(/\./g, '-');
                 let moneyPart = e.substring(match.index);
                 return numPart + moneyPart;
@@ -263,7 +247,6 @@ function thucThi() {
 
         let lineD = [], lastN = [];
 
-        // === TỪ ĐÂY TRỞ XUỐNG: CỐT LÕI GIỮ NGUYÊN 100% CỦA BẠN ===
         ents.forEach(e => {
             e = e.trim();
             let mMon = e.match(/(\d+(\.\d+)?)$/); if (!mMon) return;
@@ -288,10 +271,17 @@ function thucThi() {
                     curN.forEach(n => { sub += tien * layHeSo(d, lo, n.length) * 0.8; });
                 }
                 totalAll += sub;
-                lineD.push(`<span class="num-blue">${curN.join('-')}</span><span class="label-type">${lo}</span><span class="cash-red">${tien}</span>`);
+                
+                // CẬP NHẬT GIAO DIỆN: Dàn hàng dọc, kẻ dòng
+                lineD.push(`
+                    <div style="padding: 6px 0; border-bottom: 1px dashed #ccc; line-height: 1.5;">
+                        <div class="num-blue" style="word-break: break-word; font-size: 15px;">${curN.join('-')}</div>
+                        <div><span class="label-type">${lo}</span> <span class="cash-red">${tien}</span></div>
+                    </div>
+                `);
+                
                 window.billText += `${curN.join('-')} ${lo} ${tien}\n`;
                 
-                // Đẩy dữ liệu vào mảng
                 jsonArray.push({
                     dai: dR.toUpperCase(),
                     so: curN.join('-'),
@@ -302,7 +292,16 @@ function thucThi() {
                 if (sG) lastN = curN;
             }
         });
-        detailHTML += `<div class="valid-row"><strong>${dR.toUpperCase()}</strong><br>${lineD.join(' | ')}</div>`;
+        
+        // CẬP NHẬT GIAO DIỆN: Đóng khung đài riêng biệt
+        detailHTML += `
+            <div style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 15px;">
+                <div style="font-weight: bold; font-size: 16px; color: #0f172a; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 4px;">
+                    ĐÀI ${dR.toUpperCase()}
+                </div>
+                ${lineD.join('')}
+            </div>
+        `;
     });
 
     let final = Math.round(totalAll);
@@ -339,7 +338,7 @@ function thucThi() {
             duLieuChuan: JSON.stringify(jsonArray) 
         }) 
     })
-    .then(() => showToast("✅ Đã gửi Telegram!")).catch(() => showToast("❌ Bạn đã nhập sai cú pháp!"));
+    .then(() => showToast("✅ Đã gửi Telegram!")).catch(() => showToast("❌ Lỗi mạng!"));
 }
 function xoaHet() { location.reload(); }
 </script>
