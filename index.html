@@ -338,7 +338,8 @@ function thucThi() {
         method: "POST", 
         body: JSON.stringify({ 
             dai: sections[0].split(':')[0].toUpperCase(), 
-            chiTiet: raw, 
+            // Đã đổi thành bản sạch: tự động xuống dòng, chuẩn cú pháp
+            chiTiet: window.billText.trim(), 
             tongTien: final, 
             secCode: secCode, 
             telegramId: userId,
