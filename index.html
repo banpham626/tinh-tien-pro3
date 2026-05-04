@@ -155,7 +155,7 @@ function mapLoaiChoi(s) {
     if (sc.includes("dau")) return "dau";
     if (sc.includes("duoi")) return "duoi";
     if (sc.includes("xiuchu") || sc.includes("xc") || sc.includes("cx")) return "xc";
-    if (sc.includes("da") || sc.includes("đá") sc.includes("đa")) return "da";
+    if (sc.includes("da")) return "da";
     if (sc.includes("7lo") || sc.includes("b7lo")) return "b7lo";
     if (sc.includes("4lo") || sc.includes("b4lo")) return "b4lo";
     return (sc.includes("bao") || sc.includes("lo") || sc === "b") ? "b" : null;
@@ -189,12 +189,15 @@ function thucThi() {
     let raw = document.getElementById('raw_input').value;
     if (!raw) { unlockButton(); return; }
 
-    // BỘ LỌC 0: ĐỒNG BỘ TIẾNG VIỆT
-    raw = raw.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d");
+    // =======================================================
+    // BỘ LỌC 0: ĐỒNG BỘ TIẾNG VIỆT & ÉP LỖI "ĐÁ" / "ĐA" -> "DA"
+    // =======================================================
+    raw = raw.toLowerCase();
+    raw = raw.replace(/đá/g, "da").replace(/đa/g, "da"); // Cập nhật ép cứng lỗi gõ
+    raw = raw.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d");
 
     // =======================================================
-    // LỚP LỌC 1 (ĐÃ SỬA): XỬ LÝ XUỐNG DÒNG & THIẾU DẤU HAI CHẤM
-    // Nới lỏng Regex để bắt các trường hợp đài dính với cược (VD: "2bn 31b10")
+    // LỚP LỌC 1: XỬ LÝ XUỐNG DÒNG & THIẾU DẤU HAI CHẤM
     // =======================================================
     let lines = raw.split('\n').map(l => l.trim()).filter(l => l);
     let formattedLines = [];
@@ -202,14 +205,10 @@ function thucThi() {
         if (line.includes(':')) {
             formattedLines.push("|" + line);
         } else {
-            // Regex mới: Tìm phần đầu tiên chỉ chứa chữ/số, ngay sau đó là khoảng trắng rồi tới số cược
-            // Vd: "2bn 31b10" -> Nhận "2bn" là đài
             let match = line.match(/^([a-z0-9]+)\s+(.+)$/);
-            // Kiểm tra thêm điều kiện: Phần đầu bắt buộc phải chứa chữ cái (để không nhầm với số cược)
             if (match && /[a-z]/.test(match[1])) {
                 formattedLines.push("|" + match[1] + ": " + match[2]);
             } 
-            // Nếu dòng chỉ có mỗi chữ (vd: "hn", "2dt") -> Chắc chắn là đài
             else if (/^([a-z0-9]+)$/.test(line.replace(/\s+/g, '')) && /[a-z]/.test(line)) {
                  formattedLines.push("|" + line + ":");
             }
