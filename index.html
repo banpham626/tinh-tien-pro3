@@ -181,14 +181,54 @@ function thucThi() {
     let raw = document.getElementById('raw_input').value;
     if (!raw) return;
 
-    // ==========================================
-    // BẢN VÁ LỖI: TÁCH CÁC CỤM DÍNH LIỀN TRƯỚC KHI ĐỔI THẬP PHÂN
-    // Nếu thấy dấu phẩy nằm giữa số, mà số đằng sau có từ 2 chữ số trở lên (vd: 10,71)
-    // thì ép thêm 1 dấu cách vào giữa thành (10, 71) để bảo toàn vách ngăn.
-    raw = raw.replace(/(\d+),(\d{2,})/g, '$1, $2');
-    // ==========================================
+    // =======================================================
+    // LỚP LỌC 1: XỬ LÝ XUỐNG DÒNG & THIẾU DẤU HAI CHẤM
+    // =======================================================
+    let lines = raw.split('\n').map(l => l.trim()).filter(l => l);
+    let formattedLines = [];
+    for (let line of lines) {
+        if (line.includes(':')) {
+            formattedLines.push("|" + line);
+        } 
+        // Nếu dòng chỉ toàn chữ cái hoặc đài cố định -> Chắc chắn là đài
+        else if (/^([a-zA-Z]+|2dn|3dn|4dn)$/i.test(line.replace(/\s+/g, ''))) {
+            formattedLines.push("|" + line + ":");
+        } 
+        else {
+            formattedLines.push(line);
+        }
+    }
+    raw = formattedLines.join(', ');
+    raw = raw.replace(/:\s*,/g, ': ').replace(/\|\s*,/g, '|').replace(/,\s*\|/g, ' | ');
+    if (raw.startsWith('|')) raw = raw.substring(1);
 
-    // Lệnh cũ của bạn: Đổi thập phân (vd: 0,5 -> 0.5) và xóa khoảng trắng dấu trừ
+    // =======================================================
+    // LỚP LỌC 2: XỬ LÝ "KÉO" (Sinh số tự động)
+    // =======================================================
+    raw = raw.replace(/(\d+)\s*keo\s*(\d+)/gi, function(match, start, end) {
+        if (start.length !== end.length) return match;
+        let step = 1;
+        for (let i = 0; i < start.length; i++) {
+            if (start[i] !== end[i]) {
+                step = Math.pow(10, start.length - 1 - i);
+                break;
+            }
+        }
+        let arr = [];
+        let s = parseInt(start, 10), e = parseInt(end, 10);
+        if (s > e) { let t = s; s = e; e = t; } 
+        for (let i = s; i <= e; i += step) {
+            arr.push(i.toString().padStart(start.length, '0'));
+        }
+        return arr.join('-');
+    });
+
+    // =======================================================
+    // LỚP LỌC 3: GIỮ NGUYÊN BẢN VÁ LỖI CŨ CỦA BẠN (Xử lý dấu phẩy)
+    // =======================================================
+    // Tách các cụm dính liền trước khi đổi thập phân
+    raw = raw.replace(/(\d+),(\d{2,})/g, '$1, $2');
+    // Đổi thập phân và xóa khoảng trắng dấu trừ
     raw = raw.replace(/(\d+),(\d+)/g, '$1.$2').replace(/(\d+)\s*-\s*(\d+)/g, '$1-$2');
     
     let sections = raw.split('|');
@@ -196,7 +236,7 @@ function thucThi() {
     let totalAll = 0, detailHTML = "", secCode = "SEC-" + Math.random().toString(36).substr(2, 5).toUpperCase();
     window.billText = "";
     
-    // ĐÂY LÀ PHẦN MỚI: Khởi tạo mảng jsonArray để gom dữ liệu
+    // Khởi tạo mảng jsonArray để gom dữ liệu
     let jsonArray = [];
 
     sections.forEach((s, idx) => {
@@ -204,8 +244,26 @@ function thucThi() {
         let dR = p[0].trim(), d = convertDai(dR); if (!d) return;
 
         window.billText += dR.toUpperCase() + ":\n";
-        let ents = p[1].split(','), lineD = [], lastN = [];
+        let ents = p[1].split(',');
 
+        // =======================================================
+        // LỚP LỌC 4: ÉP DẤU CHẤM (.) THÀNH GẠCH NỐI (-) Ở PHẦN SỐ
+        // =======================================================
+        ents = ents.map(e => {
+            e = e.trim();
+            let match = e.match(/[a-zA-Z]+/); // Tìm vị trí chữ cái cược (da, xc, b...)
+            if (match) {
+                // Chỉ đổi dấu chấm thành gạch ngang ở phần số, giữ nguyên phần tiền
+                let numPart = e.substring(0, match.index).replace(/\./g, '-');
+                let moneyPart = e.substring(match.index);
+                return numPart + moneyPart;
+            }
+            return e.replace(/\./g, '-');
+        });
+
+        let lineD = [], lastN = [];
+
+        // === TỪ ĐÂY TRỞ XUỐNG: CỐT LÕI GIỮ NGUYÊN 100% CỦA BẠN ===
         ents.forEach(e => {
             e = e.trim();
             let mMon = e.match(/(\d+(\.\d+)?)$/); if (!mMon) return;
@@ -233,7 +291,7 @@ function thucThi() {
                 lineD.push(`<span class="num-blue">${curN.join('-')}</span><span class="label-type">${lo}</span><span class="cash-red">${tien}</span>`);
                 window.billText += `${curN.join('-')} ${lo} ${tien}\n`;
                 
-                // ĐÂY LÀ PHẦN MỚI: Đẩy dữ liệu vào mảng
+                // Đẩy dữ liệu vào mảng
                 jsonArray.push({
                     dai: dR.toUpperCase(),
                     so: curN.join('-'),
@@ -269,7 +327,7 @@ function thucThi() {
     new QRCode(document.getElementById("print_qr_content"), { text: qrData, width: 160, height: 160, correctLevel: QRCode.CorrectLevel.L });
     document.getElementById('print_sec_content').innerText = secCode;
 
-    // ĐÂY LÀ PHẦN MỚI: Gửi kèm dữ liệu chuẩn lên Google Apps Script
+    // Gửi kèm dữ liệu chuẩn lên Google Apps Script
     fetch(GAS_URL, { 
         method: "POST", 
         body: JSON.stringify({ 
@@ -283,7 +341,6 @@ function thucThi() {
     })
     .then(() => showToast("✅ Đã gửi Telegram!")).catch(() => showToast("❌ Bạn đã nhập sai cú pháp!"));
 }
-
 function xoaHet() { location.reload(); }
 </script>
 </body>
