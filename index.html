@@ -175,6 +175,7 @@ function thucThi() {
     let raw = document.getElementById('raw_input').value;
     if (!raw) return;
 
+    // LỚP LỌC 1: XỬ LÝ XUỐNG DÒNG & THIẾU DẤU HAI CHẤM
     let lines = raw.split('\n').map(l => l.trim()).filter(l => l);
     let formattedLines = [];
     for (let line of lines) {
@@ -190,6 +191,7 @@ function thucThi() {
     raw = raw.replace(/:\s*,/g, ': ').replace(/\|\s*,/g, '|').replace(/,\s*\|/g, ' | ');
     if (raw.startsWith('|')) raw = raw.substring(1);
 
+    // LỚP LỌC 2: XỬ LÝ "KÉO" (Sinh số tự động)
     raw = raw.replace(/(\d+)\s*keo\s*(\d+)/gi, function(match, start, end) {
         if (start.length !== end.length) return match;
         let step = 1;
@@ -208,6 +210,14 @@ function thucThi() {
         return arr.join('-');
     });
 
+    // =======================================================
+    // LỚP LỌC 2.5 (MỚI): CẢM BIẾN TÁCH KIỂU CHƠI DÍNH CHÙM
+    // Nhận diện [Chữ + Tiền] + [Khoảng trắng] + [Chữ] -> Bơm dấu phẩy vào giữa
+    // Vd: "348b5 xc5" -> "348b5, xc5"
+    // =======================================================
+    raw = raw.replace(/([a-zA-Z]+\s*\d+(?:\.\d+)?)\s+(?=[a-zA-Z]+)/g, '$1, ');
+
+    // LỚP LỌC 3: Xử lý dấu phẩy thập phân
     raw = raw.replace(/(\d+),(\d{2,})/g, '$1, $2');
     raw = raw.replace(/(\d+),(\d+)/g, '$1.$2').replace(/(\d+)\s*-\s*(\d+)/g, '$1-$2');
     
@@ -223,19 +233,28 @@ function thucThi() {
         window.billText += dR.toUpperCase() + ":\n";
         let ents = p[1].split(',');
 
+        // =======================================================
+        // LỚP LỌC 4 (NÂNG CẤP): MÁY XAY KHOẢNG TRẮNG VÀ DẤU CHẤM
+        // ========================================== =============
         ents = ents.map(e => {
             e = e.trim();
             let match = e.match(/[a-zA-Z]+/);
             if (match) {
-                let numPart = e.substring(0, match.index).replace(/\./g, '-');
+                // Tách riêng phần Số và phần Tiền
+                let numPart = e.substring(0, match.index).trim();
+                // Nghiền nát mọi dấu cách, dấu chấm liên tiếp thành 1 dấu gạch ngang
+                numPart = numPart.replace(/[\s\.]+/g, '-');
+                
                 let moneyPart = e.substring(match.index);
-                return numPart + moneyPart;
+                return (numPart ? numPart + " " : "") + moneyPart;
             }
-            return e.replace(/\./g, '-');
+            // Dự phòng nếu dòng chỉ toàn số
+            return e.replace(/[\s\.]+/g, '-');
         });
 
         let lineD = [], lastN = [];
 
+        // --- BẮT ĐẦU VÒNG LẶP TÍNH TIỀN ---
         ents.forEach(e => {
             e = e.trim();
             let mMon = e.match(/(\d+(\.\d+)?)$/); if (!mMon) return;
@@ -261,9 +280,7 @@ function thucThi() {
                 }
                 totalAll += sub;
                 
-                // ==========================================
-                // BẢN NÂNG CẤP UI: ÉP CÙNG DÒNG (INLINE)
-                // ==========================================
+                // --- GIAO DIỆN CÙNG DÒNG (INLINE) ---
                 lineD.push(`
                     <div style="padding: 6px 0; border-bottom: 1px dashed #ccc; line-height: 1.6;">
                         <span class="num-blue" style="word-break: break-word; font-size: 15px; margin-right: 5px;">${curN.join('-')}</span>
@@ -330,6 +347,10 @@ function thucThi() {
     })
     .then(() => showToast("✅ Đã gửi Telegram!")).catch(() => showToast("❌ Lỗi mạng!"));
 }
+
+
+
+
 function xoaHet() { location.reload(); }
 </script>
 </body>
