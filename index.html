@@ -288,22 +288,39 @@ function thucThi() {
                     curN.forEach(n => { sub += tien * layHeSo(d, lo, n.length) * 0.8; });
                 }
                 totalAll += sub;
-                lineD.push(`<span class="num-blue">${curN.join('-')}</span><span class="label-type">${lo}</span><span class="cash-red">${tien}</span>`);
+                
+                // ==========================================
+                // BẢN NÂNG CẤP UI: DÀN HÀNG DỌC CÓ ĐƯỜNG KẺ TƠ
+                // ==========================================
+                lineD.push(`
+                    <div style="padding: 8px 0; border-bottom: 1px dashed #cbd5e1; line-height: 1.6;">
+                        <span class="num-blue" style="word-break: break-word; display: block; margin-bottom: 4px; font-size: 15px;">
+                            ${curN.join('-')}
+                        </span>
+                        <div style="display: flex; justify-content: flex-start; align-items: center; gap: 8px;">
+                            <span class="label-type">${lo}</span>
+                            <span class="cash-red" style="font-size: 15px;">${tien}</span>
+                        </div>
+                    </div>
+                `);
+                
                 window.billText += `${curN.join('-')} ${lo} ${tien}\n`;
                 
-                // Đẩy dữ liệu vào mảng
-                jsonArray.push({
-                    dai: dR.toUpperCase(),
-                    so: curN.join('-'),
-                    kieu: lo,
-                    tien: tien
-                });
+                // ... (phần jsonArray giữ nguyên)
 
                 if (sG) lastN = curN;
             }
         });
-        detailHTML += `<div class="valid-row"><strong>${dR.toUpperCase()}</strong><br>${lineD.join(' | ')}</div>`;
-    });
+
+        // BÓC TÁCH RIÊNG TỪNG ĐÀI VÀO CÁC HỘP ĐỘC LẬP (Xóa bỏ dấu ' | ')
+        detailHTML += `
+            <div style="background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                <strong style="font-size: 16px; color: #1e293b; display: block; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 4px; text-transform: uppercase;">
+                    🎯 ĐÀI ${dR.toUpperCase()}
+                </strong>
+                ${lineD.join('')}
+            </div>
+        `;
 
     let final = Math.round(totalAll);
     
