@@ -170,6 +170,20 @@ function layHeSo(dai, loai, len) {
     const k = { "da":{"1D":36,"2D":72,"3D":216,"4D":432,"MB":54}, "xc":{"1D":2,"2D":4,"3D":6,"4D":8,"MB":4}, "dd":{"1D":2,"2D":4,"3D":6,"4D":8,"MB":5}, "dau":{"1D":1,"2D":2,"3D":3,"4D":4,"MB":1}, "duoi":{"1D":1,"2D":2,"3D":3,"4D":4,"MB":1}, "b7lo":{"1D":7,"2D":14,"3D":21,"4D":28,"MB":7}, "b4lo":{"1D":4,"2D":8,"3D":12,"4D":16,"MB":4} };
     return k[loai]?.[n] || 0;
 }
+
+
+// HÀM MỚI: Đếm số vòng đảo (Hoán vị có lặp của một chuỗi số)
+function demSoDao(str) {
+    if (!str) return 1;
+    let counts = {};
+    for (let c of str) counts[c] = (counts[c] || 0) + 1;
+    let gt = n => (n <= 1 ? 1 : n * gt(n - 1)); // Hàm tính giai thừa
+    let tu = gt(str.length);
+    let mau = 1;
+    for (let k in counts) mau *= gt(counts[k]);
+    return tu / mau;
+}
+
     
 function thucThi() {
     let raw = document.getElementById('raw_input').value;
