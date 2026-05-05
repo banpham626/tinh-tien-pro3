@@ -386,7 +386,7 @@ function thucThi() {
     new QRCode(document.getElementById("print_qr_content"), { text: qrData, width: 160, height: 160, correctLevel: QRCode.CorrectLevel.L });
     document.getElementById('print_sec_content').innerText = secCode;
 
-    fetch(GAS_URL, { 
+fetch(GAS_URL, { 
         method: "POST", 
         body: JSON.stringify({ 
             dai: sections[0].split(':')[0].toUpperCase(), 
@@ -397,8 +397,14 @@ function thucThi() {
             duLieuChuan: JSON.stringify(jsonArray) 
         }) 
     })
-    .then(() => showToast("✅ Đã gửi Telegram!")).catch(() => showToast("❌ Bạn đã nhập sai cú pháp!"));
-}
+    .then(() => {
+        document.getElementById('loading_overlay').style.display = "none"; // Tắt áo giáp
+        showToast("✅ Đã gửi Telegram!");
+    })
+    .catch(() => {
+        document.getElementById('loading_overlay').style.display = "none"; // Tắt áo giáp
+        showToast("❌ Bạn đã nhập sai cú pháp!");
+    });
 
 function xoaHet() { location.reload(); }
 </script>
