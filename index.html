@@ -159,11 +159,9 @@ function convertDai(d) {
 function mapLoaiChoi(s) {
     let sc = s.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/\s+/g, "");
     
-    // Bắt các trường hợp "đảo" trước để không bị dính vào "xc" hay "b"
     if (sc.includes("xcd") || sc.includes("xcdao") || sc.includes("daoxc")) return "xcd";
     if (sc.includes("bd") || sc.includes("bdao") || sc.includes("daob") || sc.includes("baodao")) return "bd";
 
-    // GIỮ NGUYÊN CŨ
     if (sc.includes("dauduoi") || sc.includes("dd")) return "dd";
     if (sc.includes("dau")) return "dau";
     if (sc.includes("duoi")) return "duoi";
@@ -184,7 +182,6 @@ function layHeSo(dai, loai, len) {
     return k[loai]?.[n] || 0;
 }
 
-// Hàm tính số vòng đảo
 function demSoDao(str) {
     if (!str) return 1;
     let counts = {};
@@ -200,13 +197,10 @@ function thucThi() {
     let raw = document.getElementById('raw_input').value;
     if (!raw) return;
     
-    // Bật áo giáp chặn thao tác
     document.getElementById('loading_overlay').style.display = "flex";
 
-    // BỘ LỌC 0: ĐỒNG BỘ TIẾNG VIỆT NGAY TỪ ĐẦU
     raw = raw.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d");
 
-    // LỚP LỌC 1: XỬ LÝ XUỐNG DÒNG & THIẾU DẤU HAI CHẤM
     let lines = raw.split('\n').map(l => l.trim()).filter(l => l);
     let formattedLines = [];
     for (let line of lines) {
@@ -229,8 +223,11 @@ function thucThi() {
         }
     }
     raw = formattedLines.join(', ');
+    
+    // KHÔI PHỤC: 3 dòng code dọn dẹp ký tự thừa cực kỳ quan trọng
+    raw = raw.replace(/:\s*,/g, ': ').replace(/\|\s*,/g, '|').replace(/,\s*\|/g, ' | ');
+    if (raw.startsWith('|')) raw = raw.substring(1);
 
-    // LỚP LỌC 2: XỬ LÝ "KÉO"
     raw = raw.replace(/(\d+)\s*keo\s*(\d+)/gi, function(match, start, end) {
         if (start.length !== end.length) return match;
         let step = 1;
@@ -249,10 +246,7 @@ function thucThi() {
         return arr.join('-');
     });
 
-    // LỚP LỌC 2.5: CẢM BIẾN TÁCH KIỂU CHƠI DÍNH CHÙM
     raw = raw.replace(/([a-z]+\s*\d+(?:\.\d+)?)\s+(?=[a-z]+)/g, '$1, ');
-
-    // LỚP LỌC 3: Xử lý dấu phẩy thập phân
     raw = raw.replace(/(\d+),(\d{2,})/g, '$1, $2');
     raw = raw.replace(/(\d+),(\d+)/g, '$1.$2').replace(/(\d+)\s*-\s*(\d+)/g, '$1-$2');
     
@@ -268,7 +262,6 @@ function thucThi() {
         window.billText += dR.toUpperCase() + ":\n";
         let ents = p[1].split(',');
 
-        // LỚP LỌC 4: MÁY XAY KHOẢNG TRẮNG VÀ DẤU CHẤM
         ents = ents.map(e => {
             e = e.trim();
             let match = e.match(/[a-z]+/);
@@ -305,7 +298,6 @@ function thucThi() {
                     let v = {2:1, 3:3, 4:6, 5:10, 6:15, 7:21, 8:28, 9:36, 10:45};
                     sub = tien * (v[curN.length] || 0) * layHeSo(d, 'da', 0) * 0.8;
                 } 
-                // Tính toán Xỉu chủ đảo (xcd) và Bao đảo (bd)
                 else if (lo === 'xcd' || lo === 'bd') {
                     let baseLo = (lo === 'xcd') ? 'xc' : 'b';
                     curN.forEach(n => {
@@ -313,7 +305,6 @@ function thucThi() {
                         sub += tien * soVongDao * layHeSo(d, baseLo, n.length) * 0.8;
                     });
                 } 
-                // Các loại chơi bình thường
                 else {
                     curN.forEach(n => { sub += tien * layHeSo(d, lo, n.length) * 0.8; });
                 }
@@ -372,10 +363,13 @@ function thucThi() {
     new QRCode(document.getElementById("print_qr_content"), { text: qrData, width: 160, height: 160, correctLevel: QRCode.CorrectLevel.L });
     document.getElementById('print_sec_content').innerText = secCode;
 
+    // Tắt loading TRƯỚC khi gọi lệnh fetch ngầm để khách không phải chờ đợi
+    document.getElementById('loading_overlay').style.display = "none";
+
     fetch(GAS_URL, { 
         method: "POST", 
         body: JSON.stringify({ 
-            dai: sections[0].split(':')[0].toUpperCase(), 
+            dai: sections.length > 0 ? sections[0].split(':')[0].toUpperCase() : "---", 
             chiTiet: window.billText.trim(), 
             tongTien: final, 
             secCode: secCode, 
@@ -383,15 +377,9 @@ function thucThi() {
             duLieuChuan: JSON.stringify(jsonArray) 
         }) 
     })
-    .then(() => {
-        document.getElementById('loading_overlay').style.display = "none";
-        showToast("✅ Đã gửi Telegram!");
-    })
-    .catch(() => {
-        document.getElementById('loading_overlay').style.display = "none";
-        showToast("❌ Bạn đã nhập sai cú pháp!");
-    });
-} // <--- ĐÂY CHÍNH LÀ DẤU NGOẶC ĐÓNG CỦA HÀM THỰC THI BỊ THIẾU Ở MÃ CŨ
+    .then(() => showToast("✅ Đã gửi Telegram!"))
+    .catch(() => showToast("❌ Có lỗi xảy ra, vui lòng thử lại!"));
+}
 
 function xoaHet() { location.reload(); }
 </script>
