@@ -192,49 +192,78 @@ function demSoDao(str) {
     for (let k in counts) mau *= gt(counts[k]);
     return tu / mau;
 }
+
+// Hàm phụ trợ kiểm tra xem 1 chuỗi có phải là tên Đài không
+function isDai(text) {
+    let clean = text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").trim();
+    let kieuChoi = /^(bao|b|da|xc|xcd|bd|dd|dau|duoi|lo|keo)$/i;
+    return !kieuChoi.test(clean);
+}
     
 function thucThi() {
     let raw = document.getElementById('raw_input').value;
-    if (!raw) return;
+    if (!raw.trim()) return;
     
-    // Bật áo giáp ngay lập tức
+    // BẬT ÁO GIÁP NGAY LẬP TỨC
     document.getElementById('loading_overlay').style.display = "flex";
 
-    // Đưa toàn bộ thuật toán xử lý vào hàm setTimeout để nhường 50ms cho trình duyệt kịp "vẽ" áo giáp lên màn hình
+    // Đưa vào khối setTimeout(50ms) để nhường quyền cho trình duyệt vẽ áo giáp lên màn hình
     setTimeout(() => {
-        // BỘ LỌC 0: Đồng bộ Tiếng Việt
-        raw = raw.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d");
+        
+        // MÁY HÚT BỤI: Dọn dẹp dấu gạch dưới thành gạch ngang, và xóa sạch dấu chấm/phẩy liên tiếp
+        raw = raw.replace(/_/g, '-');
+        raw = raw.replace(/[\.\,]{2,}/g, ' ');
 
-        // KHÔI PHỤC LỚP LỌC 1 BẢN CHUẨN TỪ ĐẦU: Gom nhóm thông minh dòng thiếu đài vào đài gần nhất
+        // ĐỒNG BỘ TIẾNG VIỆT
+        let rawNoAccent = raw.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d");
+
+        // LỚP LỌC 1 (NGUYÊN BẢN CHUẨN): Nhận diện Đài và Gộp các dòng số bên dưới vào Đài đó
         let lines = raw.split('\n').map(l => l.trim()).filter(l => l);
         let formattedLines = [];
+        
         for (let line of lines) {
             if (line.includes(':')) {
                 formattedLines.push("|" + line);
             } else {
-                let parts = line.split(/\s+/);
-                let firstWord = parts[0];
+                let match = line.match(/^(\p{L}+\s+\p{L}+|\d+\p{L}+|\p{L}+)\s+(?=\d)/u);
                 
-                if (/^\d*[a-z]+$/.test(firstWord)) {
-                    let rest = parts.slice(1).join(' ');
-                    if (rest.length > 0) {
-                        formattedLines.push("|" + firstWord + ": " + rest);
-                    } else {
-                        formattedLines.push("|" + firstWord + ":");
-                    }
-                } else {
+                if (match && isDai(match[1])) {
+                    let fixedLine = line.substring(0, match[1].length) + ':' + line.substring(match[1].length);
+                    formattedLines.push("|" + fixedLine);
+                } 
+                else if (new RegExp("^(\\p{L}+\\s+\\p{L}+|\\d+\\p{L}+|\\p{L}+)$", "u").test(line) && isDai(line)) {
+                    formattedLines.push("|" + line + ":");
+                } 
+                else {
                     formattedLines.push(line);
                 }
             }
         }
+        
         raw = formattedLines.join(', ');
 
-        // KHÔI PHỤC CHÍNH XÁC 3 DÒNG DỌN DẸP KÝ TỰ THỪA
+        // KHÔI PHỤC 3 DÒNG DỌN DẸP KÝ TỰ THỪA SAU KHI GOM
         raw = raw.replace(/:\s*,/g, ': ').replace(/\|\s*,/g, '|').replace(/,\s*\|/g, ' | ');
         if (raw.startsWith('|')) raw = raw.substring(1);
 
+        // ==========================================
+        // CỬA AN NINH CHUẨN: KIỂM TRA LỖI QUÊN GHI TÊN ĐÀI Ở DÒNG ĐẦU TIÊN
+        // ==========================================
+        let checkSections = raw.split('|').map(s => s.trim()).filter(s => s);
+        if (checkSections.length === 0) {
+            document.getElementById('loading_overlay').style.display = "none";
+            return;
+        }
+        let firstSegment = checkSections[0];
+        // Ép buộc đoạn văn bản đầu tiên nhất định phải chứa dấu ":" VÀ từ khóa phía trước dấu ":" phải là tên đài hợp lệ
+        if (!firstSegment.includes(':') || !convertDai(firstSegment.split(':')[0].trim())) {
+            document.getElementById('loading_overlay').style.display = "none";
+            showToast("❌ Nhập sai cú pháp: Thiếu tên đài ở dòng đầu tiên!");
+            return;
+        }
+
         // LỚP LỌC 2: XỬ LÝ "KÉO"
-        raw = raw.replace(/(\d+)\s*keo\s*(\d+)/gi, function(match, start, end) {
+        raw = raw.replace(/(\d+)\s*(?:keo|kéo)\s*(\d+)/gi, function(match, start, end) {
             if (start.length !== end.length) return match;
             let step = 1;
             for (let i = 0; i < start.length; i++) {
@@ -371,10 +400,10 @@ function thucThi() {
         new QRCode(document.getElementById("print_qr_content"), { text: qrData, width: 160, height: 160, correctLevel: QRCode.CorrectLevel.L });
         document.getElementById('print_sec_content').innerText = secCode;
 
-        // Tắt áo giáp trước khi ném dữ liệu đi
+        // TẮT ÁO GIÁP TRƯỚC KHI GỬI DỮ LIỆU ĐI
         document.getElementById('loading_overlay').style.display = "none";
 
-        // Lấy danh sách đài gửi Telegram
+        // Lấy danh sách Toàn bộ các đài gửi Telegram
         let tatCaCacDai = [...new Set(jsonArray.map(item => item.dai))].join(', ');
 
         fetch(GAS_URL, { 
