@@ -124,6 +124,13 @@
     </div>
 </div>
 
+<!-- LỚP ÁO GIÁP (LOADING OVERLAY) -->
+<div id="loading_overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; justify-content:center; align-items:center; flex-direction:column; color:white;">
+    <div style="width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid #2563eb; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px;"></div>
+    <div style="font-size:20px; font-weight:bold; letter-spacing: 1px;">⏳ VUI LÒNG ĐỢI...</div>
+    <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
+</div>
+
 <div id="toast"></div>
 
 <script>
@@ -198,6 +205,9 @@ function demSoDao(str) {
 function thucThi() {
     let raw = document.getElementById('raw_input').value;
     if (!raw) return;
+    
+    // Bật áo giáp chặn thao tác
+    document.getElementById('loading_overlay').style.display = "flex";
 
     // =======================================================
     // BỘ LỌC 0 (VÁ LỖI): ĐỒNG BỘ TIẾNG VIỆT NGAY TỪ ĐẦU
@@ -206,22 +216,31 @@ function thucThi() {
     // =======================================================
     raw = raw.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d");
 
-    // LỚP LỌC 1 (VÁ LỖI): XỬ LÝ XUỐNG DÒNG & THIẾU DẤU HAI CHẤM
+// LỚP LỌC 1 (VÁ LỖI): XỬ LÝ XUỐNG DÒNG & THIẾU DẤU HAI CHẤM
     let lines = raw.split('\n').map(l => l.trim()).filter(l => l);
     let formattedLines = [];
     for (let line of lines) {
         if (line.includes(':')) {
             formattedLines.push("|" + line);
-        } else if (/^(\d*[a-z]+)$/.test(line.replace(/\s+/g, ''))) {
-            // Đã nâng cấp Regex: Nhận diện mọi đài (2dt, hn, 3dai, dongnai...)
-            formattedLines.push("|" + line + ":");
         } else {
-            formattedLines.push(line);
+            // Tách từ đầu tiên ra để kiểm tra (vd: 2dn, hn)
+            let parts = line.split(/\s+/);
+            let firstWord = parts[0];
+            
+            // Regex kiểm tra xem từ đầu tiên có phải mã đài không (bắt đầu bằng số tùy chọn, kết thúc bằng chữ)
+            if (/^\d*[a-z]+$/.test(firstWord)) {
+                let rest = parts.slice(1).join(' '); // Phần số và kiểu chơi phía sau
+                if (rest.length > 0) {
+                    formattedLines.push("|" + firstWord + ": " + rest);
+                } else {
+                    formattedLines.push("|" + firstWord + ":");
+                }
+            } else {
+                formattedLines.push(line);
+            }
         }
     }
     raw = formattedLines.join(', ');
-    raw = raw.replace(/:\s*,/g, ': ').replace(/\|\s*,/g, '|').replace(/,\s*\|/g, ' | ');
-    if (raw.startsWith('|')) raw = raw.substring(1);
 
     // LỚP LỌC 2: XỬ LÝ "KÉO" (Sinh số tự động)
     raw = raw.replace(/(\d+)\s*keo\s*(\d+)/gi, function(match, start, end) {
