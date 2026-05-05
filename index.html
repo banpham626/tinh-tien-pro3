@@ -159,11 +159,9 @@ function convertDai(d) {
 function mapLoaiChoi(s) {
     let sc = s.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/\s+/g, "");
     
-    // CẬP NHẬT: Thêm "xiuchudao" và "daoxiuchu" vào để ưu tiên bắt trọn cụm dài trước
     if (sc.includes("xcd") || sc.includes("xcdao") || sc.includes("daoxc") || sc.includes("xiuchudao") || sc.includes("daoxiuchu")) return "xcd";
     if (sc.includes("bd") || sc.includes("bdao") || sc.includes("daob") || sc.includes("baodao")) return "bd";
 
-    // GIỮ NGUYÊN CÁC LOẠI CŨ
     if (sc.includes("dauduoi") || sc.includes("dd")) return "dd";
     if (sc.includes("dau")) return "dau";
     if (sc.includes("duoi")) return "duoi";
@@ -199,188 +197,201 @@ function thucThi() {
     let raw = document.getElementById('raw_input').value;
     if (!raw) return;
     
+    // Bật áo giáp ngay lập tức
     document.getElementById('loading_overlay').style.display = "flex";
 
-    raw = raw.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d");
+    // Đưa toàn bộ thuật toán xử lý vào hàm setTimeout để nhường 50ms cho trình duyệt kịp "vẽ" áo giáp lên màn hình
+    setTimeout(() => {
+        // BỘ LỌC 0: Đồng bộ Tiếng Việt
+        raw = raw.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d");
 
-    let lines = raw.split('\n').map(l => l.trim()).filter(l => l);
-    let formattedLines = [];
-    for (let line of lines) {
-        if (line.includes(':')) {
-            formattedLines.push("|" + line);
-        } else {
-            let parts = line.split(/\s+/);
-            let firstWord = parts[0];
-            
-            if (/^\d*[a-z]+$/.test(firstWord)) {
-                let rest = parts.slice(1).join(' ');
-                if (rest.length > 0) {
-                    formattedLines.push("|" + firstWord + ": " + rest);
-                } else {
-                    formattedLines.push("|" + firstWord + ":");
-                }
+        // KHÔI PHỤC LỚP LỌC 1 BẢN CHUẨN TỪ ĐẦU: Gom nhóm thông minh dòng thiếu đài vào đài gần nhất
+        let lines = raw.split('\n').map(l => l.trim()).filter(l => l);
+        let formattedLines = [];
+        for (let line of lines) {
+            if (line.includes(':')) {
+                formattedLines.push("|" + line);
             } else {
-                formattedLines.push(line);
-            }
-        }
-    }
-    raw = formattedLines.join(', ');
-    
-    // KHÔI PHỤC: 3 dòng code dọn dẹp ký tự thừa cực kỳ quan trọng
-    raw = raw.replace(/:\s*,/g, ': ').replace(/\|\s*,/g, '|').replace(/,\s*\|/g, ' | ');
-    if (raw.startsWith('|')) raw = raw.substring(1);
-
-    raw = raw.replace(/(\d+)\s*keo\s*(\d+)/gi, function(match, start, end) {
-        if (start.length !== end.length) return match;
-        let step = 1;
-        for (let i = 0; i < start.length; i++) {
-            if (start[i] !== end[i]) {
-                step = Math.pow(10, start.length - 1 - i);
-                break;
-            }
-        }
-        let arr = [];
-        let s = parseInt(start, 10), e = parseInt(end, 10);
-        if (s > e) { let t = s; s = e; e = t; } 
-        for (let i = s; i <= e; i += step) {
-            arr.push(i.toString().padStart(start.length, '0'));
-        }
-        return arr.join('-');
-    });
-
-    raw = raw.replace(/([a-z]+\s*\d+(?:\.\d+)?)\s+(?=[a-z]+)/g, '$1, ');
-    raw = raw.replace(/(\d+),(\d{2,})/g, '$1, $2');
-    raw = raw.replace(/(\d+),(\d+)/g, '$1.$2').replace(/(\d+)\s*-\s*(\d+)/g, '$1-$2');
-    
-    let sections = raw.split('|');
-    let totalAll = 0, detailHTML = "", secCode = "SEC-" + Math.random().toString(36).substr(2, 5).toUpperCase();
-    window.billText = "";
-    let jsonArray = [];
-
-    sections.forEach((s, idx) => {
-        let p = s.split(':'); if (p.length < 2) return;
-        let dR = p[0].trim(), d = convertDai(dR); if (!d) return;
-
-        window.billText += dR.toUpperCase() + ":\n";
-        let ents = p[1].split(',');
-
-        ents = ents.map(e => {
-            e = e.trim();
-            let match = e.match(/[a-z]+/);
-            if (match) {
-                let numPart = e.substring(0, match.index).trim();
-                numPart = numPart.replace(/[\s\.]+/g, '-');
+                let parts = line.split(/\s+/);
+                let firstWord = parts[0];
                 
-                let moneyPart = e.substring(match.index);
-                return (numPart ? numPart + " " : "") + moneyPart;
-            }
-            return e.replace(/[\s\.]+/g, '-');
-        });
-
-        let lineD = [], lastN = [];
-
-        ents.forEach(e => {
-            e = e.trim();
-            let mMon = e.match(/(\d+(\.\d+)?)$/); if (!mMon) return;
-            let tien = parseFloat(mMon[1]);
-            
-            let con = e.slice(0, e.length - mMon[1].length).trim();
-            let mSo = con.match(/[0-9\-\(\)]{2,}/g), sGR = mSo ? mSo[0].trim() : "";
-            let sG = sGR.replace(/[\(\)]/g, "");
-            
-            let loStr = sGR ? con.replace(sGR, "").trim() : con;
-            let lo = mapLoaiChoi(loStr);
-            
-            if (!lo) return;
-
-            let curN = sG ? sG.split('-').filter(n => n.length >= 2) : lastN;
-            if (curN.length > 0) {
-                let sub = 0;
-                if (lo === 'da') {
-                    let v = {2:1, 3:3, 4:6, 5:10, 6:15, 7:21, 8:28, 9:36, 10:45};
-                    sub = tien * (v[curN.length] || 0) * layHeSo(d, 'da', 0) * 0.8;
-                } 
-                else if (lo === 'xcd' || lo === 'bd') {
-                    let baseLo = (lo === 'xcd') ? 'xc' : 'b';
-                    curN.forEach(n => {
-                        let soVongDao = demSoDao(n);
-                        sub += tien * soVongDao * layHeSo(d, baseLo, n.length) * 0.8;
-                    });
-                } 
-                else {
-                    curN.forEach(n => { sub += tien * layHeSo(d, lo, n.length) * 0.8; });
+                if (/^\d*[a-z]+$/.test(firstWord)) {
+                    let rest = parts.slice(1).join(' ');
+                    if (rest.length > 0) {
+                        formattedLines.push("|" + firstWord + ": " + rest);
+                    } else {
+                        formattedLines.push("|" + firstWord + ":");
+                    }
+                } else {
+                    formattedLines.push(line);
                 }
-                totalAll += sub;
-                
-                lineD.push(`
-                    <div style="padding: 6px 0; border-bottom: 1px dashed #ccc; line-height: 1.6;">
-                        <span class="num-blue" style="word-break: break-word; font-size: 15px; margin-right: 5px;">${curN.join('-')}</span>
-                        <span style="white-space: nowrap;">
-                            <span class="label-type">${lo}</span> 
-                            <span class="cash-red">${tien}</span>
-                        </span>
-                    </div>
-                `);
-                
-                window.billText += `${curN.join('-')}${lo}${tien}\n`;
-                
-                jsonArray.push({
-                    dai: dR.toUpperCase(),
-                    so: curN.join('-'),
-                    kieu: lo,
-                    tien: tien
-                });
-
-                if (sG) lastN = curN;
             }
+        }
+        raw = formattedLines.join(', ');
+
+        // KHÔI PHỤC CHÍNH XÁC 3 DÒNG DỌN DẸP KÝ TỰ THỪA
+        raw = raw.replace(/:\s*,/g, ': ').replace(/\|\s*,/g, '|').replace(/,\s*\|/g, ' | ');
+        if (raw.startsWith('|')) raw = raw.substring(1);
+
+        // LỚP LỌC 2: XỬ LÝ "KÉO"
+        raw = raw.replace(/(\d+)\s*keo\s*(\d+)/gi, function(match, start, end) {
+            if (start.length !== end.length) return match;
+            let step = 1;
+            for (let i = 0; i < start.length; i++) {
+                if (start[i] !== end[i]) {
+                    step = Math.pow(10, start.length - 1 - i);
+                    break;
+                }
+            }
+            let arr = [];
+            let s = parseInt(start, 10), e = parseInt(end, 10);
+            if (s > e) { let t = s; s = e; e = t; } 
+            for (let i = s; i <= e; i += step) {
+                arr.push(i.toString().padStart(start.length, '0'));
+            }
+            return arr.join('-');
         });
+
+        // LỚP LỌC 2.5: Tách kiểu chơi dính chùm
+        raw = raw.replace(/([a-z]+\s*\d+(?:\.\d+)?)\s+(?=[a-z]+)/g, '$1, ');
+
+        // LỚP LỌC 3: Xử lý dấu phẩy thập phân
+        raw = raw.replace(/(\d+),(\d{2,})/g, '$1, $2');
+        raw = raw.replace(/(\d+),(\d+)/g, '$1.$2').replace(/(\d+)\s*-\s*(\d+)/g, '$1-$2');
         
-        detailHTML += `
-            <div style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 15px;">
-                <div style="font-weight: bold; font-size: 16px; color: #0f172a; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 4px;">
-                    ĐÀI ${dR.toUpperCase()}
+        let sections = raw.split('|');
+        let totalAll = 0, detailHTML = "", secCode = "SEC-" + Math.random().toString(36).substr(2, 5).toUpperCase();
+        window.billText = "";
+        let jsonArray = [];
+
+        sections.forEach((s, idx) => {
+            let p = s.split(':'); if (p.length < 2) return;
+            let dR = p[0].trim(), d = convertDai(dR); if (!d) return;
+
+            window.billText += dR.toUpperCase() + ":\n";
+            let ents = p[1].split(',');
+
+            ents = ents.map(e => {
+                e = e.trim();
+                let match = e.match(/[a-z]+/);
+                if (match) {
+                    let numPart = e.substring(0, match.index).trim();
+                    numPart = numPart.replace(/[\s\.]+/g, '-');
+                    let moneyPart = e.substring(match.index);
+                    return (numPart ? numPart + " " : "") + moneyPart;
+                }
+                return e.replace(/[\s\.]+/g, '-');
+            });
+
+            let lineD = [], lastN = [];
+
+            ents.forEach(e => {
+                e = e.trim();
+                let mMon = e.match(/(\d+(\.\d+)?)$/); if (!mMon) return;
+                let tien = parseFloat(mMon[1]);
+                
+                let con = e.slice(0, e.length - mMon[1].length).trim();
+                let mSo = con.match(/[0-9\-\(\)]{2,}/g), sGR = mSo ? mSo[0].trim() : "";
+                let sG = sGR.replace(/[\(\)]/g, "");
+                
+                let loStr = sGR ? con.replace(sGR, "").trim() : con;
+                let lo = mapLoaiChoi(loStr);
+                
+                if (!lo) return;
+
+                let curN = sG ? sG.split('-').filter(n => n.length >= 2) : lastN;
+                if (curN.length > 0) {
+                    let sub = 0;
+                    if (lo === 'da') {
+                        let v = {2:1, 3:3, 4:6, 5:10, 6:15, 7:21, 8:28, 9:36, 10:45};
+                        sub = tien * (v[curN.length] || 0) * layHeSo(d, 'da', 0) * 0.8;
+                    } 
+                    else if (lo === 'xcd' || lo === 'bd') {
+                        let baseLo = (lo === 'xcd') ? 'xc' : 'b';
+                        curN.forEach(n => {
+                            let soVongDao = demSoDao(n);
+                            sub += tien * soVongDao * layHeSo(d, baseLo, n.length) * 0.8;
+                        });
+                    } 
+                    else {
+                        curN.forEach(n => { sub += tien * layHeSo(d, lo, n.length) * 0.8; });
+                    }
+                    totalAll += sub;
+                    
+                    lineD.push(`
+                        <div style="padding: 6px 0; border-bottom: 1px dashed #ccc; line-height: 1.6;">
+                            <span class="num-blue" style="word-break: break-word; font-size: 15px; margin-right: 5px;">${curN.join('-')}</span>
+                            <span style="white-space: nowrap;">
+                                <span class="label-type">${lo}</span> 
+                                <span class="cash-red">${tien}</span>
+                            </span>
+                        </div>
+                    `);
+                    
+                    window.billText += `${curN.join('-')}${lo}${tien}\n`;
+                    
+                    jsonArray.push({
+                        dai: dR.toUpperCase(),
+                        so: curN.join('-'),
+                        kieu: lo,
+                        tien: tien
+                    });
+
+                    if (sG) lastN = curN;
+                }
+            });
+            
+            detailHTML += `
+                <div style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; margin-bottom: 15px;">
+                    <div style="font-weight: bold; font-size: 16px; color: #0f172a; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 4px;">
+                        ĐÀI ${dR.toUpperCase()}
+                    </div>
+                    ${lineD.join('')}
                 </div>
-                ${lineD.join('')}
-            </div>
-        `;
-    });
+            `;
+        });
 
-    let final = Math.round(totalAll);
-    
-    document.getElementById('result_total').innerText = final.toLocaleString();
-    document.getElementById('result_detail').innerHTML = detailHTML;
-    document.getElementById('sec-code-display').innerText = secCode;
-    document.getElementById('qr_container').style.display = "block";
-    
-    let qrData = GAS_URL + "?id=" + secCode;
-    document.getElementById('qrcode-screen').innerHTML = "";
-    new QRCode(document.getElementById("qrcode-screen"), { text: qrData, width: 140, height: 140, correctLevel: QRCode.CorrectLevel.L });
+        let final = Math.round(totalAll);
+        
+        document.getElementById('result_total').innerText = final.toLocaleString();
+        document.getElementById('result_detail').innerHTML = detailHTML;
+        document.getElementById('sec-code-display').innerText = secCode;
+        document.getElementById('qr_container').style.display = "block";
+        
+        let qrData = GAS_URL + "?id=" + secCode;
+        document.getElementById('qrcode-screen').innerHTML = "";
+        new QRCode(document.getElementById("qrcode-screen"), { text: qrData, width: 140, height: 140, correctLevel: QRCode.CorrectLevel.L });
 
-    let now = new Date();
-    document.getElementById('print_time').innerText = "Thời gian: " + now.toLocaleTimeString('vi-VN') + " - " + now.toLocaleDateString('vi-VN');
-    document.getElementById('print_detail_content').innerHTML = detailHTML;
-    document.getElementById('print_total_content').innerText = final.toLocaleString();
-    
-    document.getElementById('print_qr_content').innerHTML = "";
-    new QRCode(document.getElementById("print_qr_content"), { text: qrData, width: 160, height: 160, correctLevel: QRCode.CorrectLevel.L });
-    document.getElementById('print_sec_content').innerText = secCode;
+        let now = new Date();
+        document.getElementById('print_time').innerText = "Thời gian: " + now.toLocaleTimeString('vi-VN') + " - " + now.toLocaleDateString('vi-VN');
+        document.getElementById('print_detail_content').innerHTML = detailHTML;
+        document.getElementById('print_total_content').innerText = final.toLocaleString();
+        
+        document.getElementById('print_qr_content').innerHTML = "";
+        new QRCode(document.getElementById("print_qr_content"), { text: qrData, width: 160, height: 160, correctLevel: QRCode.CorrectLevel.L });
+        document.getElementById('print_sec_content').innerText = secCode;
 
-    // Tắt loading TRƯỚC khi gọi lệnh fetch ngầm để khách không phải chờ đợi
-    document.getElementById('loading_overlay').style.display = "none";
+        // Tắt áo giáp trước khi ném dữ liệu đi
+        document.getElementById('loading_overlay').style.display = "none";
 
-    fetch(GAS_URL, { 
-        method: "POST", 
-        body: JSON.stringify({ 
-            dai: sections.length > 0 ? sections[0].split(':')[0].toUpperCase() : "---", 
-            chiTiet: window.billText.trim(), 
-            tongTien: final, 
-            secCode: secCode, 
-            telegramId: userId,
-            duLieuChuan: JSON.stringify(jsonArray) 
-        }) 
-    })
-    .then(() => showToast("✅ Đã gửi Telegram!"))
-    .catch(() => showToast("❌ Có lỗi xảy ra, vui lòng thử lại!"));
+        // Lấy danh sách đài gửi Telegram
+        let tatCaCacDai = [...new Set(jsonArray.map(item => item.dai))].join(', ');
+
+        fetch(GAS_URL, { 
+            method: "POST", 
+            body: JSON.stringify({ 
+                dai: tatCaCacDai || "---", 
+                chiTiet: window.billText.trim(), 
+                tongTien: final, 
+                secCode: secCode, 
+                telegramId: userId,
+                duLieuChuan: JSON.stringify(jsonArray) 
+            }) 
+        })
+        .then(() => showToast("✅ Đã gửi Telegram!"))
+        .catch(() => showToast("❌ Có lỗi xảy ra, vui lòng thử lại!"));
+        
+    }, 50); // Kết thúc khối trễ 50ms của áo giáp
 }
 
 function xoaHet() { location.reload(); }
