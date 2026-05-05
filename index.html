@@ -215,7 +215,7 @@ function thucThi() {
         raw = raw.replace(/[\.\,]{2,}/g, ' ');
 
         // ĐỒNG BỘ TIẾNG VIỆT
-        let rawNoAccent = raw.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d");
+        raw = raw.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d");
 
         // LỚP LỌC 1 (NGUYÊN BẢN CHUẨN): Nhận diện Đài và Gộp các dòng số bên dưới vào Đài đó
         let lines = raw.split('\n').map(l => l.trim()).filter(l => l);
