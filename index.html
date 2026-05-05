@@ -159,9 +159,11 @@ function convertDai(d) {
 function mapLoaiChoi(s) {
     let sc = s.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/\s+/g, "");
     
-    if (sc.includes("xcd") || sc.includes("xcdao") || sc.includes("daoxc")) return "xcd";
+    // CẬP NHẬT: Thêm "xiuchudao" và "daoxiuchu" vào để ưu tiên bắt trọn cụm dài trước
+    if (sc.includes("xcd") || sc.includes("xcdao") || sc.includes("daoxc") || sc.includes("xiuchudao") || sc.includes("daoxiuchu")) return "xcd";
     if (sc.includes("bd") || sc.includes("bdao") || sc.includes("daob") || sc.includes("baodao")) return "bd";
 
+    // GIỮ NGUYÊN CÁC LOẠI CŨ
     if (sc.includes("dauduoi") || sc.includes("dd")) return "dd";
     if (sc.includes("dau")) return "dau";
     if (sc.includes("duoi")) return "duoi";
