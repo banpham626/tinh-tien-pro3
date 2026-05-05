@@ -149,8 +149,16 @@ function convertDai(d) {
     return /^\d/.test(dc) ? null : d.toLowerCase().trim();
 }
 
+
+
 function mapLoaiChoi(s) {
     let sc = s.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/\s+/g, "");
+    
+    // THÊM MỚI: Bắt các trường hợp "đảo" trước để không bị dính vào "xc" hay "b"
+    if (sc.includes("xcd") || sc.includes("xcdao") || sc.includes("daoxc")) return "xcd";
+    if (sc.includes("bd") || sc.includes("bdao") || sc.includes("daob") || sc.includes("baodao")) return "bd";
+
+    // GIỮ NGUYÊN CŨ
     if (sc.includes("dauduoi") || sc.includes("dd")) return "dd";
     if (sc.includes("dau")) return "dau";
     if (sc.includes("duoi")) return "duoi";
@@ -160,6 +168,8 @@ function mapLoaiChoi(s) {
     if (sc.includes("4lo") || sc.includes("b4lo")) return "b4lo";
     return (sc.includes("bao") || sc.includes("lo") || sc === "b") ? "b" : null;
 }
+
+
 
 function layHeSo(dai, loai, len) {
     let n = (dai === "hn") ? "MB" : (dai.includes('4d') ? "4D" : (dai.includes('3d') ? "3D" : (dai.includes('2d') ? "2D" : "1D")));
