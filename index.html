@@ -193,10 +193,10 @@ function demSoDao(str) {
     return tu / mau;
 }
 
-// Hàm phụ trợ kiểm tra xem 1 chuỗi có phải là tên Đài không
+// BỔ SUNG: Tránh nhầm lẫn các thuật ngữ khi kiểm tra Tên đài
 function isDai(text) {
     let clean = text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").trim();
-    let kieuChoi = /^(bao|b|da|xc|xcd|bd|dd|dau|duoi|lo|keo)$/i;
+    let kieuChoi = /^(bao|b|da|xc|xcd|bd|dd|dau|duoi|lo|keo|kéo|7lo|4lo)$/i; 
     return !kieuChoi.test(clean);
 }
     
@@ -204,20 +204,18 @@ function thucThi() {
     let raw = document.getElementById('raw_input').value;
     if (!raw.trim()) return;
     
-    // BẬT ÁO GIÁP NGAY LẬP TỨC
     document.getElementById('loading_overlay').style.display = "flex";
 
-    // Đưa vào khối setTimeout(50ms) để nhường quyền cho trình duyệt vẽ áo giáp lên màn hình
     setTimeout(() => {
         
-        // MÁY HÚT BỤI: Dọn dẹp dấu gạch dưới thành gạch ngang, và xóa sạch dấu chấm/phẩy liên tiếp
+        // MÁY HÚT BỤI
         raw = raw.replace(/_/g, '-');
         raw = raw.replace(/[\.\,]{2,}/g, ' ');
 
-        // ĐỒNG BỘ TIẾNG VIỆT
+        // ĐỒNG BỘ TIẾNG VIỆT (FIX LỖI 0,5 TỐI THƯỢNG ĐÃ ĐƯỢC BẢO TOÀN)
         raw = raw.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d");
 
-        // LỚP LỌC 1 (NGUYÊN BẢN CHUẨN): Nhận diện Đài và Gộp các dòng số bên dưới vào Đài đó
+        // LỚP LỌC 1 (NGUYÊN BẢN CHUẨN)
         let lines = raw.split('\n').map(l => l.trim()).filter(l => l);
         let formattedLines = [];
         
@@ -241,50 +239,47 @@ function thucThi() {
         }
         
         raw = formattedLines.join(', ');
-
-        // KHÔI PHỤC 3 DÒNG DỌN DẸP KÝ TỰ THỪA SAU KHI GOM
         raw = raw.replace(/:\s*,/g, ': ').replace(/\|\s*,/g, '|').replace(/,\s*\|/g, ' | ');
         if (raw.startsWith('|')) raw = raw.substring(1);
 
-        // ==========================================
-        // CỬA AN NINH CHUẨN: KIỂM TRA LỖI QUÊN GHI TÊN ĐÀI Ở DÒNG ĐẦU TIÊN
-        // ==========================================
+        // CỬA AN NINH
         let checkSections = raw.split('|').map(s => s.trim()).filter(s => s);
         if (checkSections.length === 0) {
             document.getElementById('loading_overlay').style.display = "none";
             return;
         }
         let firstSegment = checkSections[0];
-        // Ép buộc đoạn văn bản đầu tiên nhất định phải chứa dấu ":" VÀ từ khóa phía trước dấu ":" phải là tên đài hợp lệ
         if (!firstSegment.includes(':') || !convertDai(firstSegment.split(':')[0].trim())) {
             document.getElementById('loading_overlay').style.display = "none";
             showToast("❌ Nhập sai cú pháp: Thiếu tên đài ở dòng đầu tiên!");
             return;
         }
 
-        // LỚP LỌC 2: XỬ LÝ "KÉO"
+        // ==========================================
+        // LỚP LỌC 2: AI TỰ ĐỘNG NỘI SUY BƯỚC NHẢY CHO "KÉO"
+        // ==========================================
         raw = raw.replace(/(\d+)\s*(?:keo|kéo)\s*(\d+)/gi, function(match, start, end) {
             if (start.length !== end.length) return match;
-            let step = 1;
+            
+            // Xây dựng bản đồ bước nhảy dựa trên sự thay đổi của từng chữ số
+            let stepStr = "";
             for (let i = 0; i < start.length; i++) {
-                if (start[i] !== end[i]) {
-                    step = Math.pow(10, start.length - 1 - i);
-                    break;
-                }
+                stepStr += (start[i] !== end[i]) ? "1" : "0";
             }
+            // Biến bản đồ thành con số thực tế (vd: 00 đến 99 -> đổi 2 số -> 11)
+            let step = parseInt(stepStr, 10) || 1;
+            
             let arr = [];
             let s = parseInt(start, 10), e = parseInt(end, 10);
             if (s > e) { let t = s; s = e; e = t; } 
+            
             for (let i = s; i <= e; i += step) {
                 arr.push(i.toString().padStart(start.length, '0'));
             }
             return arr.join('-');
         });
 
-        // LỚP LỌC 2.5: Tách kiểu chơi dính chùm
         raw = raw.replace(/([a-z]+\s*\d+(?:\.\d+)?)\s+(?=[a-z]+)/g, '$1, ');
-
-        // LỚP LỌC 3: Xử lý dấu phẩy thập phân
         raw = raw.replace(/(\d+),(\d{2,})/g, '$1, $2');
         raw = raw.replace(/(\d+),(\d+)/g, '$1.$2').replace(/(\d+)\s*-\s*(\d+)/g, '$1-$2');
         
@@ -302,7 +297,10 @@ function thucThi() {
 
             ents = ents.map(e => {
                 e = e.trim();
-                let match = e.match(/[a-z]+/);
+                // ==========================================
+                // FIX LỖI TÁCH CHỮ 7 LÔ (Ưu tiên đọc 7lo trước khi cắt [a-z])
+                // ==========================================
+                let match = e.match(/7\s*lo|4\s*lo|[a-z]+/);
                 if (match) {
                     let numPart = e.substring(0, match.index).trim();
                     numPart = numPart.replace(/[\s\.]+/g, '-');
@@ -400,10 +398,8 @@ function thucThi() {
         new QRCode(document.getElementById("print_qr_content"), { text: qrData, width: 160, height: 160, correctLevel: QRCode.CorrectLevel.L });
         document.getElementById('print_sec_content').innerText = secCode;
 
-        // TẮT ÁO GIÁP TRƯỚC KHI GỬI DỮ LIỆU ĐI
         document.getElementById('loading_overlay').style.display = "none";
 
-        // Lấy danh sách Toàn bộ các đài gửi Telegram
         let tatCaCacDai = [...new Set(jsonArray.map(item => item.dai))].join(', ');
 
         fetch(GAS_URL, { 
@@ -420,7 +416,7 @@ function thucThi() {
         .then(() => showToast("✅ Đã gửi Telegram!"))
         .catch(() => showToast("❌ Có lỗi xảy ra, vui lòng thử lại!"));
         
-    }, 50); // Kết thúc khối trễ 50ms của áo giáp
+    }, 50); 
 }
 
 function xoaHet() { location.reload(); }
